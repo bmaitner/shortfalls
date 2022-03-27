@@ -21,14 +21,20 @@ try_to_parquet <- function(file,
 
     while(!error_found){
 
-        data <- fread(file = file,
-            nrows = batch_size,
-            skip = i)
 
         if(i == 0){
 
+          data <- fread(file = file,
+                        nrows = batch_size,
+                        skip = i,sep = "\t",header = TRUE)
+
           col_names <- colnames(data)
+
         }else{
+
+          data <- fread(file = file,
+                        nrows = batch_size,
+                        skip = i,sep = "\t",header = FALSE)
 
           colnames(data) <- col_names
 
