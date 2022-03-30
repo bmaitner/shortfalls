@@ -127,21 +127,27 @@ source("R/try_to_parquet.R")
 
 source("R/get_trait_coverage.R")
 
-  # trait_coverage <-
-  #   get_trait_coverage(wcvp = wcvp,
-  #                      trait_summary = trait_summary)
-  #
-  # saveRDS(object = trait_coverage,
-  #         file = "data/trait_coverage.rds")
+  trait_coverage <-
+    get_trait_coverage(wcvp = wcvp,
+                       trait_summary = trait_summary)
+
+  saveRDS(object = trait_coverage,
+          file = "data/trait_coverage.rds")
 
   trait_coverage <- read_rds("data/trait_coverage.rds")
 
 
   # TDWG polygons from https://github.com/tdwg/wgsrpd/tree/master/level3 on 3/25/2022
 
+  colnames(trait_coverage)
 
+  trait_coverage %>%
+    pivot_wider(id_cols = area,
+                names_from = trait,
+                values_from = completeness)
 
-
+  trait_coverage %>%
+    filter(trait == "Plant growth form")
 
 
 

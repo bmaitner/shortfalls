@@ -24,7 +24,7 @@ get_trait_coverage <- function(wcvp, trait_summary){
           out$trait[counter] <- trait_j
           out$completeness[counter] <- length(which(trait_summary$AccSpeciesName %in% species_i & trait_summary$TraitName == trait_j))/length(species_i)
           counter <- counter+1
-          message(round(counter/nrow(out)), " percent done")
+          message(round(counter/nrow(out)*100), " percent done")
 
 
       }
