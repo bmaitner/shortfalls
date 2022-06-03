@@ -345,12 +345,48 @@ all_variables <-
     summary(m_spamm)
 
 
+    # ------------ Fixed effects (beta) ------------
+    #   Estimate Cond. SE  t-value
+    # (Intercept)        -1.971818 0.155355 -12.6923
+    # AREA_SQKM          -0.002878 0.015211  -0.1892
+    # GDP_SUM            -0.006243 0.008596  -0.7263
+    # GDP_CAPITA         -0.011658 0.008598  -1.3559
+    # ROAD_DENSITY        0.007931 0.007888   1.0055
+    # POP_COUNT           0.002478 0.010361   0.2392
+    # POP_DENSITY         0.022487 0.010265   2.1907
+    # SECURITY           -0.011157 0.010419  -1.0709
+    # RESEARCH_EXP        0.059530 0.014590   4.0801
+    # EDUCATION_EXP      -0.006837 0.007870  -0.8687
+    # richness           -0.089564 0.014333  -6.2489
+    # mean_species_range  0.385158 0.017740  21.7113
+    # endemism           -0.125133 0.012753  -9.8120
+
+
   #Check confidence intervals
     confint(object = m_spamm,
                    parm = c("AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
                             "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
                             "EDUCATION_EXP",
                             "richness","mean_species_range","endemism"))
+
+    # lower AREA_SQKM upper AREA_SQKM
+    # -0.03304453      0.02733951
+    # lower GDP_SUM upper GDP_SUM
+    # -0.02317210    0.01076032
+    # lower GDP_CAPITA upper GDP_CAPITA
+    # -0.028761533      0.005237228
+    # lower ROAD_DENSITY upper ROAD_DENSITY
+    # -0.007579177        0.023494870
+    # lower POP_COUNT upper POP_COUNT
+    # -0.01790140      0.02284565
+    # lower POP_DENSITY upper POP_DENSITY
+    # 0.002317483       0.042809915
+    # lower SECURITY upper SECURITY
+    # -0.031635492    0.009369981
+    # lower RESEARCH_EXP upper RESEARCH_EXP
+    # 0.03068766         0.08857076
+    # lower EDUCATION_EXP upper EDUCATION_EXP
+    # -0.022325566         0.008648484
 
   #Also check AICs
     AIC(m_spamm)
