@@ -183,8 +183,8 @@ n_species <- length(unique(wcvp$taxon_name))
         mutate(AccSpeciesName = Accepted_species) %>%
         select(-Accepted_species) -> bad_names
 
-      #Toss names that don't match to our list of accepted taxa
-      bad_names[which(!bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names
+      #Only keep TNRSed names that match to our list of accepted taxa
+      bad_names[which(bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names
 
       #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
       rbind(good_names, bad_names) %>%
@@ -257,12 +257,12 @@ source("R/get_trait_coverage.R")
         filter(TraitName %in% traits_for_main_analysis$TraitName)
 
 
-  trait_coverage <-
-    get_trait_coverage(wcvp = wcvp,
-                       trait_summary = trait_summary_for_main_analysis)
+  # trait_coverage <-
+  #   get_trait_coverage(wcvp = wcvp,
+  #                      trait_summary = trait_summary_for_main_analysis)
 
-  saveRDS(object = trait_coverage,
-          file = "data/focal_trait_coverage.rds")
+  # saveRDS(object = trait_coverage,
+  #         file = "data/focal_trait_coverage.rds")
 
   trait_coverage <- read_rds("data/focal_trait_coverage.rds")
 
@@ -327,10 +327,15 @@ ggplot(data = countries)+
 
 traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
 
-traits %>% head() %>% collect() -> thead
-
+traits %>%
+  select(DataName,TraitID)%>%
+  filter(is.na(TraitID)) %>%
+  select(DataName)%>%
+  collect()%>%
+  unique() -> trait_md_options
 
 # Get MD useful for inferring trait location (country or state or lat/long)
+  #this will include anything with country, lat/long, or state, EXCEPT where they include qualifiers that cast doubt on the location
 
   traits %>%
     filter(is.na(TraitID)) %>%
@@ -347,10 +352,166 @@ traits %>% head() %>% collect() -> thead
     unique() %>%
     pivot_wider(id_cols = ObservationID,
                 names_from = DataName,
-                values_from = OrigValueStr) -> useful_md
+                values_from = OrigValueStr) -> useful_md #668k
 
-  #Next, need to iterate through md and assign a tdwg polygon based on lat/lon if possible, and other metadata if not
-    #may need to pull in GNRS here actually
+  source("R/get_countries.R")
+  tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
+
+  useful_md <- get_countries(useful_md = useful_md, tdwg = tdwg)
+
+  #How many of the records couldn't be assigned to a bot country?
+
+  stop("code") #og useful m is 668 759 if same number isn't returned, modify to record og number
+
+  useful_md %>%
+    select(ObservationID, LEVEL_NAME) %>%
+    filter(is.na(LEVEL_NAME)) -> useless_md
+
+  #Toss anything without a LEVEL3 name
+
+    useful_md %>%
+      select(ObservationID, LEVEL_NAME) %>%
+      filter(!is.na(LEVEL_NAME)) -> useful_md
+
+    message(nrow(useless_md)/(nrow(useless_md)+nrow(useful_md))*100,"% of metadata cannot be used due to errors, etc.")
+
+  #Now, pull only the trait observations with an ObservationID in the useful_md dataset
+    #and append country to traits where possible
+
+    traits %>%
+      filter(!is.na(TraitID)) %>%
+      select(ObservationID, AccSpeciesName, TraitName) %>%
+      filter(ObservationID %in% useful_md$ObservationID) %>%
+      collect() %>%
+        inner_join(y = useful_md,by = "ObservationID")%>%
+      group_by(AccSpeciesName, TraitName, LEVEL_NAME) %>%
+      count() -> stc #stc = species + trait + country
+
+
+    #matching the trait names using WCVP for consistency
+      TNRS(taxonomic_names = unique(stc$AccSpeciesName),
+            sources = "wcvp") -> tnrsed_stc_names
+
+      stc[which(stc$AccSpeciesName %in% wcvp$taxon_name),] -> good_stc_names
+      stc[which(!stc$AccSpeciesName %in% wcvp$taxon_name),] -> bad_stc_names
+
+      merge(x = bad_stc_names,
+            y = tnrsed_stc_names,
+            by.x = "AccSpeciesName",
+            by.y = "Name_submitted",
+            all.x = TRUE,
+            all.y = FALSE) %>%
+        filter(Accepted_name_rank == "species") %>% #toss names that couldn't be matched to species
+        select(AccSpeciesName, TraitName,LEVEL_NAME, n, Accepted_species) %>%
+        mutate(AccSpeciesName = Accepted_species) %>%
+        select(-Accepted_species) -> bad_stc_names
+
+      #Toss names that don't match to our list of accepted taxa
+        bad_stc_names[which(bad_stc_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_stc_names
+
+      #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
+        rbind(good_stc_names, bad_stc_names) %>%
+          group_by(AccSpeciesName, TraitName, LEVEL_NAME) %>%
+          summarize(n = sum(n)) -> stc
+
+      #We need to know the number of fraction of trait x species combinations overall
+        trait_list_stc <- read.csv("manual_downloads/trait_annotation/trait_list.csv")
+
+
+        stc %>%
+          group_by(AccSpeciesName, TraitName) %>%
+          count() %>%
+          ungroup() %>%
+          group_by(TraitName) %>%
+          count() %>%
+          collect() %>%
+          mutate(pct_coverage_clean = round(x = (n/n_species) *100,digits = 2))%>%
+          rename(n_clean = n) -> stc_trait_list_v2
+
+        merge(x = trait_list_stc,
+              y = stc_trait_list_v2,
+              by = "TraitName", all = TRUE) ->
+          stc_trait_list
+
+        rm(stc_trait_list_v2)
+
+        # How many traits with observation of at least 1%, and are general?
+        length(which(stc_trait_list$pct_coverage_clean >= 1 &
+                       stc_trait_list$general == 1)) #29
+
+
+        traits_for_geo_analysis <-
+          stc_trait_list %>%
+          filter(pct_coverage_clean >= 1 & general == 1)
+
+        trait_summary_for_geo_analysis <-
+          stc %>%
+          filter(TraitName %in% traits_for_geo_analysis$TraitName)
+
+        nrow(trait_summary_for_geo_analysis)
+
+
+  #run through a country-specific version of get_trait_coverage()
+
+
+        # georeferenced_trait_coverage <-
+        #   get_georeferenced_trait_coverage(wcvp = wcvp,
+        #                      trait_summary_for_geo_analysis = trait_summary_for_geo_analysis,
+        #                      tdwg = tdwg,
+        #                      temp_file = "temp/temp_georeferenced_trait_coverage.RDS")
+        #
+        # saveRDS(object = georeferenced_trait_coverage,
+        #         file = "data/focal_georeferenced_trait_coverage.rds")
+
+        georeferenced_trait_coverage <- read_rds("data/focal_georeferenced_trait_coverage.rds")
+
+
+        # TDWG polygons from https://github.com/tdwg/wgsrpd/tree/master/level3 on 3/25/2022
+
+
+        georeferenced_coverage_wide <-
+          georeferenced_trait_coverage %>%
+          pivot_wider(id_cols = area,
+                      names_from = trait,
+                      values_from = completeness)
+
+
+        countries <- sf::read_sf("manual_downloads/TDWG/level3.shp")
+
+
+        plot(countries[1])
+
+        geo_countries <-merge(x = countries,
+                          y = georeferenced_coverage_wide,
+                          by.x = "LEVEL3_COD",
+                          by.y = "area")
+
+
+        ggplot(data = geo_countries)+
+          geom_sf(aes(fill = 100 * `Leaf dry mass per leaf fresh mass (leaf dry matter content, LDMC)`))+
+          scale_fill_viridis_c(option = "plasma")+
+          labs(fill = "%")+
+          ggtitle("Leaf dry mass per leaf fresh mass (leaf dry matter content, LDMC)")
+
+
+        #get overall trait coverage
+          # wcvp x n traits =  expected
+          stc %>%
+            group_by(TraitName)%>%
+            summarise(n_obs = n())%>%
+            mutate(frac_cov = n_obs/(nrow(wcvp)) )-> stc_overall_coverage
+          mean(stc_overall_coverage$frac_cov)*100
+          max(stc_overall_coverage$frac_cov)
+          stc_overall_coverage %>% slice_max(order_by = frac_cov)
+
+          #How many trais even had georeferenced data?
+            length(unique(stc_overall_coverage$TraitName))
+
+        # Geo focal trait coverage
+        georeferenced_trait_coverage %>%
+          slice_max(order_by = completeness) #66.6 % coverage (antarctica)
+
+        mean(georeferenced_trait_coverage$completeness)*100
 
 ############################################
 

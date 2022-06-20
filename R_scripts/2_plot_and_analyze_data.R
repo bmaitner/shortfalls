@@ -11,8 +11,6 @@ library(lme4)
 library(sf)
 #tdwg <- read_sf("manual_downloads/TDWG/level3.shp")
 tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
-plot(tdwg[1])
-
 
 #Load in the trait data
   traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
@@ -169,23 +167,28 @@ traits$metadata
                  lw,
                  alternative = "greater")
 
+      moran_test_two_sided <- moran.test(tdwg_combined$completeness,
+                                        lw,
+                                        alternative = "two.sided")
+
+
       MC_test_combined <- moran.mc(tdwg_combined$completeness,
                     lw,
                     nsim = 999,
                     alternative = "greater")
 
-      MC_test_combined_v2 <- moran.mc(tdwg_combined$completeness,
+      MC_test_combined_two_sided <- moran.mc(tdwg_combined$completeness,
                                    lw,
-                                   nsim = 9999,
-                                   alternative = "greater")
-
-
+                                   nsim = 999,
+                                   alternative = "two.sided")
 
   moran_test_combined
   MC_test_combined
+  MC_test_combined_two_sided
 
   ?moran.mc
   plot(MC_test_combined)
+  plot(MC_test_combined_two_sided)
 
   #check whether the autocorrelation is present in the residuals
 
@@ -369,6 +372,12 @@ all_variables <-
                             "EDUCATION_EXP",
                             "richness","mean_species_range","endemism"))
 
+    confint(object = m_spamm,
+            parm = c("(Intercept)"))
+
+
+    # lower (Intercept) upper (Intercept)
+    # -2.313630         -1.635251
     # lower AREA_SQKM upper AREA_SQKM
     # -0.03304453      0.02733951
     # lower GDP_SUM upper GDP_SUM
@@ -387,6 +396,12 @@ all_variables <-
     # 0.03068766         0.08857076
     # lower EDUCATION_EXP upper EDUCATION_EXP
     # -0.022325566         0.008648484
+    # lower richness upper richness
+    # -0.11823147    -0.06085545
+    # lower mean_species_range upper mean_species_range
+    # 0.3484147                0.4221169
+    # lower endemism upper endemism
+    # -0.15153308    -0.09865601
 
   #Also check AICs
     AIC(m_spamm)
@@ -424,6 +439,7 @@ all_variables <-
     performance::check_model()
 
 #################################
+
     # Alternatively, may be able to fit each separatemodels for each trait using e.g. lme4::lmList()
       #this appears to be less powerful, since each model is fitted with little data.  I think its better to stick with random effects of trait
 
@@ -461,6 +477,144 @@ all_variables <-
 
 
 #############################
+
+  #Intraspecific
+
+
+    # Trait completeness model: 1% threshold and broadly applicable traits
+    #via a single model
+
+    # Load overall trait completeness
+    geo_traits_one_percent_threshold <- read_rds("data/focal_georeferenced_trait_coverage.rds")
+
+
+    # merge with predictor variables
+    socio_vars <- read.csv("manual_downloads/Darwinian_shortfalls/socioeco_var.csv")
+    #socio_vars[2:10] <- scale(socio_vars[2:10])
+
+    # combine trait completeness and predictor variables
+    geo_traits_one_percent_threshold <-
+      merge(x = geo_traits_one_percent_threshold,
+            y = socio_vars,
+            by.x= "area",
+            by.y = "LEVEL_3_CO")
+
+    # add species richness
+    wcvp <- readRDS("manual_downloads/WCVP/wcvp_cleaned.RDS")
+
+    wcvp %>%
+      group_by(area_code_l3) %>%
+      summarise(richness = n()) %>%
+      merge(x = geo_traits_one_percent_threshold,
+            y = .,
+            by.x = "area",
+            by.y = "area_code_l3",
+            all.x = TRUE) ->
+      geo_traits_one_percent_threshold
+
+    # Add mean range size
+
+    socio_vars %>%
+      select(LEVEL_3_CO, AREA_SQKM) %>%
+      merge(x = wcvp,
+            y = .,
+            by.x = "area_code_l3",
+            by.y = "LEVEL_3_CO",
+            all.x = TRUE) %>%
+      group_by(taxon_name) %>%
+      summarise(range_size = sum(AREA_SQKM)) %>%
+      merge(x = wcvp,
+            y = .,by = "taxon_name",
+            all.x = TRUE) %>%
+      group_by(area_code_l3) %>%
+      summarise(mean_species_range = mean(na.omit(range_size))) %>%
+      merge(x = geo_traits_one_percent_threshold,
+            y = .,
+            by.x="area",
+            by.y = "area_code_l3") -> geo_traits_one_percent_threshold
+
+    # Add endemism
+
+    wcvp %>%
+      group_by(taxon_name) %>%
+      summarize(n_countries = n()) %>%
+      merge(x = wcvp,
+            y = .) %>%
+      group_by(area_code_l3) %>%
+      filter(n_countries == 1) %>%
+      summarise(endemics = n()) %>%
+      merge(x = geo_traits_one_percent_threshold,
+            y = .,
+            by.x = "area",
+            by.y = "area_code_l3",
+            all.x = TRUE) %>%
+      mutate(endemics = replace_na(endemics,0)) %>%
+      mutate(endemism = endemics/richness) %>%
+      select(-endemics) -> geo_traits_one_percent_threshold
+
+
+    #rescale predictors
+    geo_traits_one_percent_threshold[4:ncol(geo_traits_one_percent_threshold)] <- scale(geo_traits_one_percent_threshold[4:ncol(geo_traits_one_percent_threshold)])
+    geo_traits_one_percent_threshold <- na.omit(geo_traits_one_percent_threshold)
+
+
+    #Get coordinates needed for spatial
+      geo_traits_one_percent_threshold %>%
+        inner_join(y = tdwg_cents, by = c("area"= "LEVEL_3_CO")) -> geo_traits_w_coords
+
+    #Get un-tf-ed richness
+      wcvp %>%
+        group_by(area_code_l3) %>%
+        summarise(richness_untf = n()) %>%
+        merge(x = geo_traits_w_coords,
+              y = .,
+              by.x = "area",
+              by.y = "area_code_l3",
+              all.x = TRUE) ->
+        geo_traits_w_coords
+
+      #trying spamm
+      library(spaMM)
+
+      geo_m_spamm <-
+        geo_traits_w_coords %>%
+        mutate(species_w_data = completeness * richness_untf) %>%
+        mutate(species_wo_data = (1-completeness) * richness_untf) %>%
+        fitme(cbind(species_w_data,species_wo_data) ~ AREA_SQKM + GDP_SUM + GDP_CAPITA + ROAD_DENSITY + POP_COUNT + POP_DENSITY + SECURITY + RESEARCH_EXP + EDUCATION_EXP
+              + richness + mean_species_range + endemism +
+                (1|trait) + Matern(1 | X + Y),
+              data = .,
+              family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
+
+      geo_m_spamm_null <-
+        geo_traits_w_coords %>%
+        mutate(species_w_data = completeness * richness_untf) %>%
+        mutate(species_wo_data = (1-completeness) * richness_untf) %>%
+        fitme(cbind(species_w_data,species_wo_data) ~  (1|trait) + Matern(1 | X + Y),
+              data = .,
+              family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
+
+
+      #Test whether model is significant improvement over null
+      spaMM::LRT(object = geo_m_spamm,
+                 object2 = geo_m_spamm_null) # p ?
+
+      #Look at model results
+      summary(geo_m_spamm)
+
+
+      #Check confidence intervals
+      confint(object = m_spamm,
+              parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
+                       "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
+                       "EDUCATION_EXP",
+                       "richness","mean_species_range","endemism"))
+
+
+
+
+##############################
+
 
     #Check richness
     general_traits_one_percent_threshold %>%
