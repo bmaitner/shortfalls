@@ -13,7 +13,7 @@ library(sf)
 tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
 
 #Load in the trait data
-  traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
+  #traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
 
 #examine the data structure
 traits$schema
@@ -151,8 +151,6 @@ traits$metadata
       nb <- poly2nb(pl = st_make_valid(tdwg_combined),
                     queen = TRUE)
 
-
-
       lw <- nb2listw(nb, style="W", zero.policy=TRUE)
 
       comp.lag <- lag.listw(lw, tdwg_combined$completeness)
@@ -197,12 +195,6 @@ traits$metadata
     testSpatialAutocorrelation(simulationOutput = sims,
                                distMat = tdwg_dist)
 
-
-#################################
-
-    #Trying glmmfields
-    library(glmmfields) #doesn't seem to work with random effects
-
 library(sf)
 library(tidyverse)
 
@@ -213,87 +205,9 @@ library(tidyverse)
     inner_join(y = tdwg_cents,by = c("area"= "LEVEL_3_CO")) -> general_traits_w_coords
 
 
-
-# m_spatial <- glmmfields(completeness ~ AREA_SQKM + GDP_SUM + GDP_CAPITA + ROAD_DENSITY + POP_COUNT + POP_DENSITY + SECURITY + RESEARCH_EXP + EDUCATION_EXP
-#                         + richness + mean_species_range + endemism +
-#                           (1|trait),
-#                         data = general_traits_w_coords,
-#                         family = binomial(),
-#                         lat = "y", lon = "x",
-#                         nknots = 12,
-#                         iter = 500,
-#                         chains = 1,
-#                         prior_intercept = student_t(3, 0, 10),
-#                         prior_beta = student_t(3, 0, 3),
-#                         prior_sigma = half_t(3, 0, 3),
-#                         prior_gp_theta = half_t(3, 0, 10),
-#                         prior_gp_sigma = half_t(3, 0, 3),
-#                         seed = 123 # passed to rstan::sampling()
-# )
-
-######################################################
-
-#glmmtmb with coordinate distance
-
-library(DHARMa)
-
-all_variables <-
-  glmer(data = general_traits_one_percent_threshold,
-        formula = completeness ~ AREA_SQKM + GDP_SUM + GDP_CAPITA + ROAD_DENSITY + POP_COUNT + POP_DENSITY + SECURITY + RESEARCH_EXP + EDUCATION_EXP
-        + richness + mean_species_range + endemism +
-          (1|trait),
-        family = "binomial",
-        control = glmerControl(optimizer="bobyqa",
-                               optCtrl=list(maxfun=2e5)),
-        na.action = "na.fail")
-
-  sims <- simulateResiduals(all_variables)
-  plot(sims)
-  sims2 <- recalculateResiduals(simulationOutput = sims,
-                       group = general_traits_one_percent_threshold$trait)
-
-  sa_test <-
-  testSpatialAutocorrelation(simulationOutput = sims2,
-                             x = unique(general_traits_w_coords$X),
-                             y = unique(general_traits_w_coords$Y),
-                             plot = FALSE)
-
-  length(resid(all_variables))/length(unique(general_traits_one_percent_threshold$trait))
-
-
-  library(lme4)
-
-  testData = createData(sampleSize = 100, overdispersion = 0.5, family = poisson())
-  fittedModel <- glmer(observedResponse ~ Environment1 + (1|group),
-                       family = "poisson", data = testData)
-
-  simulationOutput <- simulateResiduals(fittedModel = fittedModel)
-
-  # standard plot
-  plot(simulationOutput)
-
-  # one of the possible test, for other options see ?testResiduals / vignette
-  testDispersion(simulationOutput)
-
-  # the calculated residuals can be accessed via
-  residuals(simulationOutput)
-
-  # transform residuals to other pdf, see ?residuals.DHARMa for details
-  residuals(simulationOutput, quantileFunction = qnorm, outlierValues = c(-7,7))
-
-  # get residuals that are outside the simulation envelope
-  outliers(simulationOutput)
-
-  # calculating aggregated residuals per group
-  simulationOutput2 = recalculateResiduals(simulationOutput, group = testData$group)
-  plot(simulationOutput2, quantreg = FALSE)
-
-  # calculating residuals only for subset of the data
-  simulationOutput3 = recalculateResiduals(simulationOutput, sel = testData$group == 1 )
-  plot(simulationOutput3, quantreg = FALSE)
-
-
 ################################
+
+  #spamm to account for spatial autocorrelation
 
   wcvp %>%
     group_by(area_code_l3) %>%
@@ -305,17 +219,6 @@ all_variables <-
           all.x = TRUE) ->
     general_traits_w_coords
 
-
-
-  all_variables <-
-    glmer(data = general_traits_one_percent_threshold,
-          formula = completeness ~ AREA_SQKM + GDP_SUM + GDP_CAPITA + ROAD_DENSITY + POP_COUNT + POP_DENSITY + SECURITY + RESEARCH_EXP + EDUCATION_EXP
-          + richness + mean_species_range + endemism +
-            (1|trait),
-          family = "binomial",
-          control = glmerControl(optimizer="bobyqa",
-                                 optCtrl=list(maxfun=2e5)),
-          na.action = "na.fail")
 
 
   #trying spamm
@@ -437,6 +340,49 @@ all_variables <-
     r2glmm::r2beta(model = mean_completeness_glm)
 
     performance::check_model()
+
+#################################
+
+  #Taxonomic Biases
+
+  family_trait_coverage <- readRDS("data/focal_trait_coverage_family.rds")
+  trait_list <- readRDS("data/trait_list_w_coverage.RDS")
+
+  #need overall completeness for comparison
+  source("R/test_family_coverage.R")
+  family_coverage_tests <- test_family_coverage(family_trait_coverage = family_trait_coverage,
+                                                trait_list = trait_list)
+
+  family_coverage_tests %>%
+    mutate(significant = case_when(p_value <= 0.05 ~ 1,
+                                   p_value > 0.05 ~ 0)) %>%
+    mutate(sig_greater = case_when(significant == 1 & exp_completeness > completeness ~ 1,
+                                   significant == 1 & exp_completeness < completeness ~ 0,
+                                   significant == 0 ~ 0)) %>%
+    mutate(sig_lesser = case_when(significant == 1 & exp_completeness < completeness ~ 1,
+                                   significant == 1 & exp_completeness > completeness ~ 0,
+                                   significant == 0 ~ 0)) -> family_coverage_tests
+
+
+  length(which(family_coverage_tests$significant == 1))/nrow(family_coverage_tests) # 36.3% differ from expectation
+
+  family_coverage_tests %>%
+    group_by(family) %>%
+    summarize( n_different = sum(significant),
+               n_greater = sum(sig_greater),
+               n_lesser = sum(sig_lesser),
+               n_spp = unique(n_spp_in_fam)) %>%
+    arrange(-n_different,n_greater) -> family_coverage_deviations
+
+  family_coverage_tests %>%
+    group_by(trait) %>%
+    summarize( n_different = sum(significant),
+               n_greater = sum(sig_greater),
+               n_lesser = sum(sig_lesser)) %>%
+    arrange(-n_different,n_greater) -> trait_coverage_deviations
+
+
+
 
 #################################
 
@@ -597,20 +543,35 @@ all_variables <-
 
       #Test whether model is significant improvement over null
       spaMM::LRT(object = geo_m_spamm,
-                 object2 = geo_m_spamm_null) # p ?
+                 object2 = geo_m_spamm_null) # p ~ 0
 
       #Look at model results
       summary(geo_m_spamm)
 
 
       #Check confidence intervals
-      confint(object = m_spamm,
+      confint(object = geo_m_spamm,
               parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
                        "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
                        "EDUCATION_EXP",
                        "richness","mean_species_range","endemism"))
 
 
+      # ------------ Fixed effects (beta) ------------
+      #   Estimate Cond. SE  t-value
+      # (Intercept)        -8.22194   0.1800 -45.6787
+      # AREA_SQKM           0.90282   0.1657   5.4489
+      # GDP_SUM             0.39607   0.1699   2.3313
+      # GDP_CAPITA          0.22684   0.2655   0.8545
+      # ROAD_DENSITY       -0.25824   0.2908  -0.8881
+      # POP_COUNT           0.02202   0.1755   0.1255
+      # POP_DENSITY        -0.23971   0.2692  -0.8906
+      # SECURITY            0.26630   0.2084   1.2779
+      # RESEARCH_EXP        1.31657   0.2315   5.6860
+      # EDUCATION_EXP       0.15842   0.1939   0.8172
+      # richness            0.96996   0.2109   4.5993
+      # mean_species_range -0.22202   0.2152  -1.0317
+      # endemism           -0.08735   0.1939  -0.4504
 
 
 ##############################

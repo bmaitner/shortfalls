@@ -206,17 +206,21 @@ n_species <- length(unique(wcvp$taxon_name))
         group_by(TraitName) %>%
         count() %>%
         collect() %>%
-        mutate(pct_coverage_clean = round(x = (n/n_species) *100,digits = 2))%>%
+        mutate(pct_coverage_clean = (n/n_species)*100) %>%
         rename(n_clean = n)-> trait_list_v2
 
-      merge(x = trait_list,y = trait_list_v2, by = "TraitName", all = TRUE) ->
+      merge(x = trait_list, y = trait_list_v2, by = "TraitName", all = TRUE) ->
         trait_list
 
       rm(trait_list_v2)
 
+      trait_list$n_clean[which(is.na(trait_list$n_clean))] <- 0
+      trait_list$pct_coverage_clean[which(is.na(trait_list$pct_coverage_clean))] <- 0
+
+
     # How many traits with observation of at least 1%, and are general?
         length(which(trait_list$pct_coverage_clean >= 1 &
-                       trait_list$general == 1)) #54
+                       trait_list$general == 1)) #55
 
   # Completeness per trait
 
@@ -224,16 +228,31 @@ n_species <- length(unique(wcvp$taxon_name))
       trait_list[which.max(trait_list$pct_coverage_clean),]
 
     #Worst coverage
-      trait_list[which.min(trait_list$n),]
-      length(which(trait_list$n==1))
+      trait_list[which.min(trait_list$n_clean),]
+      length(which(trait_list$n_clean==1))
+      length(which(trait_list$n_clean==0))
 
     #averages
-      mean(na.omit(trait_list$pct_coverage_clean))# 0.22 %
-      median(na.omit(trait_list$pct_coverage_clean))# 0.01 %
+
+      mean(na.omit(trait_list$pct_coverage_clean))# 0.20 %
+      median(na.omit(trait_list$pct_coverage_clean))# 0.0049 %
 
 
     #subset to traits with 1% coverage or more
-    trait_list[which(trait_list$pct_coverage_clean >= 1),]
+
+      trait_list[which(trait_list$pct_coverage_clean >= 1),]
+
+      traits_for_main_analysis <-
+        trait_list %>%
+        filter(pct_coverage_clean >= 1 & general == 1)
+
+      trait_summary_for_main_analysis <-
+        trait_summary %>%
+        filter(TraitName %in% traits_for_main_analysis$TraitName)
+
+      saveRDS(object = trait_summary_for_main_analysis,file = "data/trait_summary_for_main_analysis.RDS")
+      saveRDS(object = trait_list,file = "data/trait_list_w_coverage.RDS")
+
 
 ###########################################################
   # We need a dataset that lists completeness as a function of country x trait, which we can join to the shapefile for plotting or use in other analyses
@@ -245,16 +264,7 @@ n_species <- length(unique(wcvp$taxon_name))
 
 source("R/get_trait_coverage.R")
 
-    length(which(trait_list$pct_coverage_clean >= 1 &
-                   trait_list$general == 1)) #54
 
-    traits_for_main_analysis <-
-      trait_list %>%
-        filter(pct_coverage_clean >= 1 & general == 1)
-
-    trait_summary_for_main_analysis <-
-      trait_summary %>%
-        filter(TraitName %in% traits_for_main_analysis$TraitName)
 
 
   # trait_coverage <-
@@ -263,6 +273,18 @@ source("R/get_trait_coverage.R")
 
   # saveRDS(object = trait_coverage,
   #         file = "data/focal_trait_coverage.rds")
+
+
+
+  #family_trait_coverage
+
+    # family_trait_coverage <-
+    # get_family_trait_coverage(wcvp = wcvp,
+    #                           trait_summary = trait_summary_for_main_analysis,
+    #                           temp_file = "temp/temp_family_trait_coverage.RDS")
+    #
+    # saveRDS(object = family_trait_coverage,
+    #         file = "data/focal_trait_coverage_family.rds")
 
   trait_coverage <- read_rds("data/focal_trait_coverage.rds")
 
