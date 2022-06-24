@@ -573,6 +573,9 @@ library(tidyverse)
       # mean_species_range -0.22202   0.2152  -1.0317
       # endemism           -0.08735   0.1939  -0.4504
 
+      # lower (Intercept) upper (Intercept)
+      # -8.221943         -8.221941
+
 
 ##############################
 

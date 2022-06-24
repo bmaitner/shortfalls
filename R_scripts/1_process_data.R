@@ -231,16 +231,33 @@ n_species <- length(unique(wcvp$taxon_name))
       trait_list[which.min(trait_list$n_clean),]
       length(which(trait_list$n_clean==1))
       length(which(trait_list$n_clean==0))
+      length(which(trait_list$n_clean <= 1))
+
+      hist(trait_list$pct_coverage_clean,breaks = 100,main = "Histogram of Trait Coverage",xlab = "Percent Coverage")
+      hist(log10(trait_list$pct_coverage_clean),breaks = 100,main = "Histogram of Trait Coverage",xlab = "log(Percent Coverage)")
 
     #averages
 
       mean(na.omit(trait_list$pct_coverage_clean))# 0.20 %
       median(na.omit(trait_list$pct_coverage_clean))# 0.0049 %
 
+      Mode <- function(x) {
+        ux <- unique(x)
+        ux[which.max(tabulate(match(x, ux)))]
+      }
+
+      Mode(trait_list$pct_coverage_clean)
+      Mode(trait_list$n_clean)
 
     #subset to traits with 1% coverage or more
 
-      trait_list[which(trait_list$pct_coverage_clean >= 1),]
+      trait_list[which(trait_list$pct_coverage_clean >= 1),] %>%
+        arrange(pct_coverage_clean)
+
+      trait_list[which(trait_list$pct_coverage_clean >= 1),] %>%
+        summarise(mean_coverage = mean(pct_coverage_clean),
+                  median_coverage = median(pct_coverage_clean),
+                  Mode_coverage = Mode(pct_coverage_clean))
 
       traits_for_main_analysis <-
         trait_list %>%
