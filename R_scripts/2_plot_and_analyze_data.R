@@ -501,7 +501,7 @@ library(tidyverse)
 
     #rescale predictors
     geo_traits_one_percent_threshold[4:ncol(geo_traits_one_percent_threshold)] <- scale(geo_traits_one_percent_threshold[4:ncol(geo_traits_one_percent_threshold)])
-    geo_traits_one_percent_threshold <- na.omit(geo_traits_one_percent_threshold)
+    geo_traits_one_percent_threshold <- na.omit(geo_traits_one_percent_threshold) #shouldn't be any NAs, but just to be sure
 
 
     #Get coordinates needed for spatial
@@ -550,11 +550,47 @@ library(tidyverse)
 
 
       #Check confidence intervals
+        # confint(object = geo_m_spamm,
+        #         parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
+        #                  "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
+        #                  "EDUCATION_EXP",
+        #                  "richness","mean_species_range","endemism"))
+        #
+
+        confint(object = geo_m_spamm,
+                parm = c("GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
+                         "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
+                         "EDUCATION_EXP",
+                         "richness","mean_species_range","endemism"))
+
+
+
+
+
+      #Check confidence intervals using bs
       confint(object = geo_m_spamm,
               parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
                        "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
                        "EDUCATION_EXP",
-                       "richness","mean_species_range","endemism"))
+                       "richness","mean_species_range","endemism"),
+              boot_args = list(nb_cores=2, nsim=199, seed=123))
+
+
+      confint(object = geo_m_spamm,
+              parm = c("RESEARCH_EXP"),
+              boot_args = list(nb_cores=2, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("richness"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("AREA_SQKM "),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+
+
+
 
 
       # ------------ Fixed effects (beta) ------------
@@ -575,6 +611,8 @@ library(tidyverse)
 
       # lower (Intercept) upper (Intercept)
       # -8.221943         -8.221941
+      # lower AREA_SQKM upper AREA_SQKM
+      # 0.902815        0.902817
 
 
 ##############################
