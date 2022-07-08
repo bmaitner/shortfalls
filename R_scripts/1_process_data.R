@@ -554,6 +554,100 @@ traits %>%
 
 ############################################
 
+  #Wood traits: would need to figure out what the woody species are by
+
+    # any species listed as having a trait measurement for wood
+    # any species with growth form implying woodiness
+
+
+        traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
+
+        traits %>%
+          group_by(TraitName) %>%
+          summarize(count = n()) %>%
+          collect() -> trait_counts
+
+        trait_counts%>%
+          filter(grepl(pattern = "wood", ignore.case = TRUE,x = TraitName)|
+                   grepl(pattern = "tree", ignore.case = TRUE,x = TraitName))%>%
+          filter(TraitName != "Stem specific density (SSD) or wood density (stem dry mass per stem fresh volume)")->wood_traits
+
+        traits %>%
+          select(AccSpeciesName,TraitName) %>%
+          filter(TraitName %in% wood_traits$TraitName) %>%
+          select(AccSpeciesName) %>%
+          collect() %>%
+          unique() -> trs
+
+
+
+        traits %>%
+          filter(TraitName == "Plant growth form") %>%
+          select(AccSpeciesName, TraitName, OrigValueStr) %>%
+          collect() %>%
+          filter(grepl(pattern = "tree",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "shrub",x = OrigValueStr,ignore.case = TRUE)|
+                 grepl(pattern = "liana",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "woody",x = OrigValueStr,ignore.case = TRUE)) %>%
+          select(AccSpeciesName) %>%
+          unique() -> gfs
+
+
+      putative_wood <- bind_rows(gfs,trs) %>% unique()
+
+      putative_wood <- TNRS::TNRS(taxonomic_names = putative_wood$AccSpeciesName,
+                                  sources = "wcvp")
+
+
+
+        # Load WCVP
+        wcvp <- read.table(file = "manual_downloads/WCVP/wcvp_distribution.txt",
+                           sep = "|",
+                           header = TRUE,
+                           quote = "",
+                           fill = TRUE,
+                           encoding = "UTF-8")
+
+        wcvp_names <- read.table(file = "manual_downloads/WCVP/wcvp_names.txt",
+                                 sep = "|",
+                                 header = TRUE,
+                                 quote = "",
+                                 fill = TRUE,
+                                 encoding = "UTF-8")
+
+
+        merge(x = wcvp,
+              y = wcvp_names,
+              all.x = TRUE) %>%
+          filter(taxon_rank == "Species") %>% #include only species
+          filter(taxon_status == "Accepted") %>% #only accepted names
+          filter(!is.na(accepted_plant_name_id)) %>% #only accepted names
+          filter(extinct == 0) %>% #only extant species
+          filter(introduced == 0) -> wcvp #exclude introduced
+
+
+        # Remove or correct mistaken Area codes
+        shape <- rgdal::readOGR("manual_downloads/Darwinian_shortfalls/level3.shp")
+        wcvp$area_code_l3 <- toupper(wcvp$area_code_l3)
+        wcvp <- wcvp[wcvp$area_code_l3 %in% shape$LEVEL_3_CO,]
+
+      rm(wcvp_names)
+
+
+      # Subset WCVP to woody species
+
+        wcvp_wood <-
+        wcvp %>%
+          filter(taxon_name %in% putative_wood$Accepted_species)
+
+        saveRDS(object = wcvp_wood,
+                file = "manual_downloads/WCVP/wcvp_cleaned_woody.RDS")
+
+
+
+
+############################################
+
 
   #Generating predictor variables
 

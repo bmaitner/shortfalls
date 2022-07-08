@@ -402,25 +402,6 @@ library(tidyverse)
     summary(lm_list_results)
 
 
-#################################
-
-  #Trivariate chloropleth maps
-
-    general_traits_one_percent_threshold %>%
-      group_by(area) %>%
-      summarize(mean_trait_completeness = mean(completeness)) %>%
-      merge(x = .,
-            y = general_traits_one_percent_threshold,
-            by="area")%>%
-      select(-trait) %>%
-      select(-completeness) %>%
-      unique() -> mean_completeness
-
-
-
-
-    load("manual_downloads/Darwinian_shortfalls/BIEN_in_WCSP_regions_sep2021.RData")
-
 
 #############################
 
@@ -567,26 +548,68 @@ library(tidyverse)
 
 
 
-      #Check confidence intervals using bs
-      confint(object = geo_m_spamm,
-              parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
-                       "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
-                       "EDUCATION_EXP",
-                       "richness","mean_species_range","endemism"),
-              boot_args = list(nb_cores=2, nsim=199, seed=123))
+      #Check confidence intervals using bs: convergence errors are thrown when using profiling
 
+      #This is super slow, so I'm doing them individually
+        # confint(object = geo_m_spamm,
+        #         parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
+        #                  "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
+        #                  "EDUCATION_EXP",
+        #                  "richness","mean_species_range","endemism"),
+        #         boot_args = list(nb_cores=2, nsim=199, seed=123))
+
+
+      confint(object = geo_m_spamm,
+              parm = c("(Intercept)"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("AREA_SQKM"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("GDP_SUM"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("GDP_CAPITA"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("ROAD_DENSITY"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("POP_COUNT"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("POP_DENSITY"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
+
+      confint(object = geo_m_spamm,
+              parm = c("SECURITY"),
+              boot_args = list(nb_cores=4, nsim=20, seed=123))
 
       confint(object = geo_m_spamm,
               parm = c("RESEARCH_EXP"),
-              boot_args = list(nb_cores=2, nsim=20, seed=123))
+              boot_args = list(nb_cores=2, nsim=100, seed=123))
 
-      confint(object = geo_m_spamm,
-              parm = c("richness"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
+      # confint(object = geo_m_spamm,
+      #         parm = c("EDUCATION_EXP"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
 
-      confint(object = geo_m_spamm,
-              parm = c("AREA_SQKM "),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
+      # confint(object = geo_m_spamm,
+      #         parm = c("richness"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("mean_species_range"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("endemism"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
 
 
 
@@ -637,35 +660,239 @@ library(tidyverse)
       group_by(area_code_l3) %>%
       summarise(richness_untf = n()) %>%
       inner_join(x = tdwg_w_richness,y=.,by = c('LEVEL_3_CO'="area_code_l3")) -> tdwg_w_richness
+##############################################
+
+  #Completeness vs climate change/uncertainty
+
+source("R/get_climate_data.R")
+
+climate_data <-
+get_climate_data(out_directory = "data/climate/",
+                 out_parquet_directory = "data/climate_averages/",
+                 tdwg = tdwg)
+
+gc()
+
+mean_completeness <-
+general_traits_one_percent_threshold %>%
+  group_by(area)%>%
+  summarise(mean_completeness = mean(completeness))
 
 
+climate_data$changes_by_years%>%
+  inner_join(y = mean_completeness,
+             by = c("country" = "area"))-> climate_by_year
+
+climate_data$changes_overall%>%
+  filter()
+  inner_join(y = mean_completeness,
+             by = c("country" = "area"))-> climate_overall
+
+  library(ggpmisc)
+  library(ggpubr)
+
+  bio_lookup <- data.frame(bio = 1:19,
+                           variable =
+  c("Annual Mean Temperature",
+    "Mean Diurnal Range (Mean of monthly (max temp - min temp))",
+    "Isothermality (BIO2/BIO7) (×100)",
+    "Temperature Seasonality (standard deviation ×100)",
+    "Max Temperature of Warmest Month",
+    "Min Temperature of Coldest Month",
+    "Temperature Annual Range (BIO5-BIO6)",
+    "Mean Temperature of Wettest Quarter",
+    "Mean Temperature of Driest Quarter",
+    "Mean Temperature of Warmest Quarter",
+    "Mean Temperature of Coldest Quarter",
+    "Annual Precipitation",
+    "Precipitation of Wettest Month",
+    "Precipitation of Driest Month",
+    "Precipitation Seasonality (Coefficient of Variation)",
+    "Precipitation of Wettest Quarter",
+    "Precipitation of Driest Quarter",
+    "Precipitation of Warmest Quarter",
+    "Precipitation of Coldest Quarter"),
+  variable_short =
+    c("Annual Mean Temp.",
+      "Mean Diurnal Range)",
+      "Isothermality",
+      "Temperature Seasonality",
+      "Max Temp. Warmest Month",
+      "Min Temp. Coldest Month",
+      "Temp. Annual Range",
+      "Mean Temp. Wettest Quarter",
+      "Mean Temp. Driest Quarter",
+      "Mean Temp. Warmest Quarter",
+      "Mean Temp. Coldest Quarter",
+      "Annual Precip.",
+      "Precip. Wettest Month",
+      "Precip. Driest Month",
+      "Precip. Seasonality",
+      "Precip. Wettest Quarter",
+      "Precip. Driest Quarter",
+      "Precip. Warmest Quarter",
+      "Precip. Coldest Quarter"))
+
+
+
+climate_overall %>%
+  inner_join(y = bio_lookup,
+             by = c("bio"="bio"))%>%
+    ggplot(mapping = aes(x = mean_difference, y = mean_completeness))+
+    facet_wrap(~variable_short, scales = "free")+
+    stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~"))) +
+    stat_poly_line() +
+    geom_point()+
+  ylab("Mean Trait Completness")+
+  xlab("Mean Difference from Present")
+
+climate_overall %>%
+  inner_join(y = bio_lookup,
+             by = c("bio"="bio")) %>%
+    ggplot(mapping = aes(x = sd_difference, y = mean_completeness))+
+    facet_wrap(~variable_short, scales = "free")+
+    stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~"))) +
+    stat_poly_line() +
+    geom_point()+
+  ylab("Mean Trait Completness")+
+  xlab("SD Difference from Present")
+
+
+tdwg%>%
+  left_join(y = climate_overall%>%
+              filter(bio==1),
+            by = c("LEVEL_3_CO" = "country")) -> test
+test$mean_difference
 
 ############################
 
-  #Make plot of proportion of bryophytes
+#venn diagram
+
+  #need to know which species have any trait, dist, gene data
+
+
+#Load data products from Rudbeck
+  gen.data <- fread("manual_downloads/Darwinian_shortfalls/genbank_entries_w_duplicates_2022.csv", header = T, quote = "", sep = NULL) # As produced in the genbank_download.R script
+  #gen.data <- fread("manual_downloads/Darwinian_shortfalls/genbank_entries_2022.csv", header = T, quote = "", sep = NULL) # As produced in the genbank_download.R script
+  load("manual_downloads/Darwinian_shortfalls/BIEN_in_WCSP_regions_sep2021.RData") # R workspace with objects "spec.list" and "res". Spec.list is a list of all L3 regions with the species recorded there in BIEN, translated to WCSP ID's. Res is a df with the lengths of the elements of spec.list.
+  name.id <- fread("data\\ID_and_Names_2022.csv", header = T) # As produced in the wcvp_subset_2021.R script
+  rm(fin)
+
+
+  # BIEN data from Rudbeck et al.
+
+    bien.list <-
+    lapply(X = names(spec.list),
+           FUN = function(x){
+
+             if(length(spec.list[[x]])==0){
+
+               return(data.frame(country = x,
+                          species = NA))
+
+             }else{
+
+               return(
+                 data.frame(country = x,
+                          species = spec.list[[x]])
+                 )
+
+             }
+
+           }) %>%
+      do.call(what = rbind) %>%
+      inner_join(y = name.id,
+                 by = c("species"="plant_name_id"))
+
+
+  # Genetic data from Rudbeck
+    gen.data <-
+    gen.data %>%
+      mutate(ID = 1:nrow(gen.data))
+
+    # should be ~ 119,405 wcvp species
+
+
+  # Pull names of species with trait data
+    tnrsed_trait_sp_names <- readRDS("data/tnrsed_names.RDS")
+
+
+  # Pull the wcvp (without ferns for consistency with Rudbeck et al)
+
+    wcvp_no_ferns <- readRDS("manual_downloads/WCVP/wcvp_cleaned_no_ferns.RDS") %>%
+      dplyr::select(family, taxon_name) %>% unique()
+
+
+  wcvp_no_ferns %>%
+    mutate(trait_data = case_when(taxon_name %in% tnrsed_trait_sp_names$Accepted_species ~ 1,
+                                  !taxon_name %in% tnrsed_trait_sp_names$Accepted_species ~ 0))%>%
+    mutate(distribution_data = case_when(taxon_name %in% bien.list$taxon_name ~ 1,
+                                  !taxon_name %in% bien.list$taxon_name ~ 0))%>%
+    mutate(genetic_data = case_when(taxon_name %in% gen.data$species ~ 1,
+                                  !taxon_name %in% gen.data$species ~ 0))-> data_availability
+
+
+    trait_data_vec <- data_availability$taxon_name[which(data_availability$trait_data==1)]
+    dist_data_vec <- data_availability$taxon_name[which(data_availability$distribution_data==1)]
+    genetic_data_vec <- data_availability$taxon_name[which(data_availability$genetic_data==1)]
+
+
+
+
+  library(VennDiagram)
+    #https://r-graph-gallery.com/14-venn-diagramm.html
+
+  vd<-
+  venn.diagram(x = list(trait_data_vec[1:10],dist_data_vec[1:10],genetic_data_vec[1:10]),
+               category.names = c("traits","distrbution","genes"),
+               filename = "#venn1.svg",
+               output=TRUE)
+
+
+  set1 <- paste(rep("word_" , 200) , sample(c(1:1000) , 200 , replace=F) , sep="")
+  set2 <- paste(rep("word_" , 200) , sample(c(1:1000) , 200 , replace=F) , sep="")
+  set3 <- paste(rep("word_" , 200) , sample(c(1:1000) , 200 , replace=F) , sep="")
+
+  set1 <- paste(trait_data_vec , sep="")
+  set2 <- paste(dist_data_vec , sep="")
+  set3 <- paste(genetic_data_vec , sep="")
+
+
+  # Diagramt
+  venn.diagram(
+    x = list(set1, set2, set3),
+    category.names = c("trait" , "dist" , "genetic"),
+    filename = '#venn_diagramm.png',
+    output=TRUE
+  )
+
+  venn.diagram(
+    x = list(set1, set2, set3),
+    category.names = c("trait" , "dist" , "genetic"),
+    filename = '#venn_diagramm.png',
+    output=TRUE
+  )
+
+
+  #Euler
+  library(eulerr)
+
+  euler(combinations = data_availability)
+
+data_availability%>%
+  dplyr::select(c("trait_data","distribution_data","genetic_data"))%>%
+  mutate(species = 1)%>%
+  euler()->eu
+
+eu %>%
+  plot(labels = c("Traits","Locations","Genes","Seed Plants"),
+       quantities =TRUE,
+       fills=list(fill = c("#FF80F7", "#00D1D0","#CFB000",NA), alpha = 0.5))
+
+############################
+
 
 ####################################
-
-    DependentVar<-rnorm(60,mean = 9.5,sd=.5)
-    Temperature<-rep(c(23.5,18,26.1,24.7,20.8,20),each=10)
-    SpatData<-data.frame(x = rep(runif(6,0,100),each=10), y = rep(runif(6,0,100),each=10))
-    SpatData$Temperature<-Temperature
-    SpatData$DependentVar<-DependentVar
-    library(stringr)
-
-    SpatData$coords <- paste(SpatData$x,", ",SpatData$y)
-    coords <- c(unique(SpatData$coords))
-    x_unique <- c(str_extract(coords, "^.+(?=,)"))
-    y_unique <- c(str_extract(coords, "(?<=, ).+$"))
-
-    SpatLM <- lm(DependentVar~Temperature,data = SpatData)
-
-    sims<-simulateResiduals(SpatLM)
-    simsrecalc<-recalculateResiduals(sims,group = SpatData$coords)
-    testSpatialAutocorrelation(simsrecalc, x = x_unique, y = y_unique)
-
-
-
 
 
 

@@ -306,8 +306,7 @@ for (i7 in area.vector){
 
 
 # Number of species with available BIEN data in a region relative to SR (Distribution Knowledge)
-for (i in area.vector)
-{
+for (i in area.vector){
   wcsp.acc.name <- name.id$taxon_name[match(spec.df[,i], name.id$plant_name_id)]
   wcsp.total <- wcsp.data[,i]
   result.list.bien[[i]] <- length(intersect(wcsp.acc.name, wcsp.total))/length(wcsp.total[!is.na(wcsp.total)])
@@ -386,3 +385,4 @@ write.table(L3.area.sum,"data\\seq_area_2022.csv", sep = ",", col.names = T, row
 length(intersect(unique(wcsp.long$accepted_plant_name) , unique(gen.data$species))) # total number
 
 length(intersect(unique(wcsp.long$accepted_plant_name) , unique(gen.data$species)))/length(unique(wcsp.long$accepted_plant_name)) # %
+
