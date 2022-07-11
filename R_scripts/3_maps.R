@@ -132,7 +132,34 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
     theme_minimal()
 
 
+######################################
 
+  #Wood map
+
+  wood_traits_focal_one_percent_threshold <- readRDS("data/focal_wood_trait_coverage.rds")
+
+
+  wood_tdwg <-
+    wood_traits_focal_one_percent_threshold %>%
+    group_by(area) %>%
+    summarise(mean_coverage = mean (completeness))%>%
+    right_join(x = tdwg,
+               y = .,
+               by = c("LEVEL_3_CO"="area"))
+
+  wood_tdwg %>% st_transform(crs = st_crs(6933))%>%
+    ggplot()+
+    geom_sf(mapping = aes(fill = mean_coverage*100))+
+    scale_fill_gradient(low = "white",
+                        high = "magenta",
+                        name = "Mean \ncoverage\n(%)",
+                        limits=c(0,100))+
+    theme_minimal()+ggtitle("Wood Traits")
+
+#############################################
+
+
+  # Endemism map
 
 
 

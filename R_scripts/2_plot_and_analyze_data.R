@@ -585,15 +585,15 @@ library(tidyverse)
 
       confint(object = geo_m_spamm,
               parm = c("POP_DENSITY"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("SECURITY"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("RESEARCH_EXP"),
               boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("SECURITY"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("RESEARCH_EXP"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
 
       # confint(object = geo_m_spamm,
       #         parm = c("EDUCATION_EXP"),

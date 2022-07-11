@@ -558,7 +558,7 @@ traits %>%
 
     # any species listed as having a trait measurement for wood
     # any species with growth form implying woodiness
-
+    # species noted as woody
 
         traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
 
@@ -570,15 +570,16 @@ traits %>%
         trait_counts%>%
           filter(grepl(pattern = "wood", ignore.case = TRUE,x = TraitName)|
                    grepl(pattern = "tree", ignore.case = TRUE,x = TraitName))%>%
-          filter(TraitName != "Stem specific density (SSD) or wood density (stem dry mass per stem fresh volume)")->wood_traits
+          filter(TraitName != "Stem specific density (SSD) or wood density (stem dry mass per stem fresh volume)")%>%
+          filter(TraitName != "Plant woodiness") -> wood_traits
+
 
         traits %>%
           select(AccSpeciesName,TraitName) %>%
           filter(TraitName %in% wood_traits$TraitName) %>%
           select(AccSpeciesName) %>%
           collect() %>%
-          unique() -> trs
-
+          unique() -> trs #these are species whose traits imply woodiness
 
 
         traits %>%
@@ -590,14 +591,31 @@ traits %>%
                  grepl(pattern = "liana",x = OrigValueStr,ignore.case = TRUE)|
                    grepl(pattern = "woody",x = OrigValueStr,ignore.case = TRUE)) %>%
           select(AccSpeciesName) %>%
-          unique() -> gfs
+          unique() -> gfs #species explicitlt stated as having a woody growth form
+
+        traits %>%
+          filter(TraitName == "Plant woodiness") %>%
+          select(AccSpeciesName, TraitName, OrigValueStr) %>%
+          collect()%>%
+          filter(grepl(pattern = "woody",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "woody/nonwoody",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "w",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "W",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "wood at base",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "woody at base",x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "woody rootstock" ,x = OrigValueStr,ignore.case = TRUE)|
+                   grepl(pattern = "True" ,x = OrigValueStr,ignore.case = TRUE)) %>%
+          select(AccSpeciesName)-> wps #species stated as woody
 
 
-      putative_wood <- bind_rows(gfs,trs) %>% unique()
+
+      putative_wood <- bind_rows(gfs,trs,wps) %>% unique()
+
+        rm(gfs,trs,wps)
 
       putative_wood <- TNRS::TNRS(taxonomic_names = putative_wood$AccSpeciesName,
-                                  sources = "wcvp")
-
+                                  sources = "wcvp") %>%
+                        filter(Accepted_species != "")
 
 
         # Load WCVP
@@ -631,8 +649,8 @@ traits %>%
         wcvp$area_code_l3 <- toupper(wcvp$area_code_l3)
         wcvp <- wcvp[wcvp$area_code_l3 %in% shape$LEVEL_3_CO,]
 
-      rm(wcvp_names)
-
+          rm(wcvp_names, shape)
+          gc()
 
       # Subset WCVP to woody species
 
@@ -640,8 +658,390 @@ traits %>%
         wcvp %>%
           filter(taxon_name %in% putative_wood$Accepted_species)
 
-        saveRDS(object = wcvp_wood,
-                file = "manual_downloads/WCVP/wcvp_cleaned_woody.RDS")
+        # saveRDS(object = wcvp_wood,
+        #         file = "manual_downloads/WCVP/wcvp_cleaned_woody.RDS")
+
+        wcvp_wood <- readRDS(file = "manual_downloads/WCVP/wcvp_cleaned_woody.RDS")
+        rm(wcvp)
+
+      #need trait summary for wood traits
+
+        traits %>%
+          filter(grepl(pattern = "wood", ignore.case = TRUE,x = TraitName)) %>% #filter to only traits pertaining to wood
+          filter(TraitName != "Stem specific density (SSD) or wood density (stem dry mass per stem fresh volume)") %>% #toss this trait which could also be applied to non-wood
+          filter(TraitName != "Plant woodiness") %>% #toss this trait which could also be applied to non-wood
+          select(AccSpeciesName,TraitName) %>%
+          group_by(AccSpeciesName, TraitName)%>%
+          summarize(n = n())%>%
+          collect() -> wood_trait_summary
+
+        #check/fix wood species names
+          good_wood_summary <- wood_trait_summary[which(wood_trait_summary$AccSpeciesName %in% wcvp_wood$taxon_name),]
+          bad_wood_summary <- wood_trait_summary[which(!wood_trait_summary$AccSpeciesName %in% wcvp_wood$taxon_name),]
+
+
+          bad_wood_summary%>%
+            dplyr::select(AccSpeciesName)%>%
+            ungroup()%>%
+            unique()%>%
+            mutate(ID=row_number())%>%
+            select(ID,AccSpeciesName)-> bad_wood_names
+
+          TNRSed_bad_wood_names <- TNRS::TNRS(taxonomic_names = bad_wood_names,
+                                              sources = "wcvp")
+
+          bad_wood_names <-
+          bad_wood_names %>%
+            inner_join(y = TNRSed_bad_wood_names%>%mutate(ID=as.numeric(ID)),by = "ID")
+
+          bad_wood_summary <-
+          bad_wood_names %>%
+            select(AccSpeciesName, Accepted_species) %>%
+            right_join(bad_wood_summary)%>%
+            dplyr::select(-AccSpeciesName)%>%
+            rename("AccSpeciesName"  = Accepted_species)
+
+
+          wood_trait_summary <-
+          good_wood_summary%>%
+            bind_rows(bad_wood_summary)%>%
+            group_by(AccSpeciesName,TraitName)%>%
+            summarise(n=sum(n))%>%
+            filter(AccSpeciesName != "")
+
+          rm(good_wood_summary,bad_wood_names,bad_wood_names)
+
+
+          source("R/get_trait_coverage.R")
+
+
+        # wood_trait_coverage <-
+        #   get_trait_coverage(wcvp = wcvp_wood,
+        #                      trait_summary = wood_trait_summary)
+        #
+        # saveRDS(object = wood_trait_coverage,
+        #         file = "data/wood_trait_coverage.rds")
+
+          wood_trait_coverage <- readRDS(file = "data/wood_trait_coverage.rds")
+
+        # Need to also look how good any of the coverage is for wood traits
+
+          n_woody_species <- length(unique(wcvp_wood$taxon_name))
+
+
+          wood_trait_summary %>%
+            group_by(AccSpeciesName, TraitName) %>%
+            count() %>%
+            ungroup() %>%
+            group_by(TraitName) %>%
+            count() %>%
+            collect() %>%
+            mutate(pct_coverage_clean = (n/n_woody_species)*100) %>%
+            rename(n_clean = n) -> woody_trait_list
+
+          n_woody_species
+
+        # focal dataset as per the others
+
+          wood_traits_focal <-
+          wood_trait_coverage %>%
+            filter(trait %in% woody_trait_list$TraitName[which(woody_trait_list$pct_coverage_clean >= 1)])
+
+
+          # saveRDS(object = wood_traits_focal,
+          #         file = "data/focal_wood_trait_coverage.rds")
+
+
+###############################################
+
+  #Seed traits and flower traits - by taxonomy
+
+        # Load WCVP
+          wcvp <- read.table(file = "manual_downloads/WCVP/wcvp_distribution.txt",
+                             sep = "|",
+                             header = TRUE,
+                             quote = "",
+                             fill = TRUE,
+                             encoding = "UTF-8")
+
+          wcvp_names <- read.table(file = "manual_downloads/WCVP/wcvp_names.txt",
+                                   sep = "|",
+                                   header = TRUE,
+                                   quote = "",
+                                   fill = TRUE,
+                                   encoding = "UTF-8")
+
+
+          merge(x = wcvp,
+                y = wcvp_names,
+                all.x = TRUE) %>%
+            filter(taxon_rank == "Species") %>% #include only species
+            filter(taxon_status == "Accepted") %>% #only accepted names
+            filter(!is.na(accepted_plant_name_id)) %>% #only accepted names
+            filter(extinct == 0) %>% #only extant species
+            filter(introduced == 0) -> wcvp #exclude introduced
+
+
+        # Remove or correct mistaken Area codes
+          shape <- rgdal::readOGR("manual_downloads/Darwinian_shortfalls/level3.shp")
+          wcvp$area_code_l3 <- toupper(wcvp$area_code_l3)
+          wcvp <- wcvp[wcvp$area_code_l3 %in% shape$LEVEL_3_CO,]
+
+          rm(wcvp_names, shape)
+          gc()
+
+
+        # Remove non-seed plants
+
+          fams <- unique(wcvp$family)
+
+          BIEN_fams <- BIEN::BIEN_taxonomy_family(fams)
+          BIEN_fams <- BIEN_fams %>%
+            select(order,scrubbed_family,higher_plant_group)%>%
+            unique()
+
+
+          # A few manual corrections
+              BIEN_fams$higher_plant_group[which(is.na(BIEN_fams$higher_plant_group)&
+                                                   BIEN_fams$scrubbed_family == "Ranunculaceae")] <- "flowering plants"
+
+              BIEN_fams$higher_plant_group[which(is.na(BIEN_fams$higher_plant_group)&
+                                                   BIEN_fams$scrubbed_family == "Mazaceae")] <- "flowering plants"
+
+              BIEN_fams$higher_plant_group[which(is.na(BIEN_fams$higher_plant_group)&
+                                                   BIEN_fams$scrubbed_family == "Lindsaeaceae")] <- "ferns and allies"
+
+              BIEN_fams$higher_plant_group[which(BIEN_fams$order=="Malpighiales"&
+                                                   BIEN_fams$scrubbed_family == "Pteridaceae")] <- "ferns and allies"
+
+
+          seed_fams <-
+          BIEN_fams$scrubbed_family[which(BIEN_fams$higher_plant_group %in%
+                                            c("flowering plants","gymnosperms (conifers)","gymnosperms (non-conifer)"))]
+          seed_fams <- unique(seed_fams)
+
+
+          wcvp_seed <-
+            wcvp %>%
+            filter(family %in% seed_fams)
+
+          # saveRDS(object = wcvp_seed,
+          #         file = "manual_downloads/WCVP/wcvp_cleaned_seed.RDS")
+
+          wcvp_seed <- readRDS(file = "manual_downloads/WCVP/wcvp_cleaned_seed.RDS")
+
+
+          #we'll also do flowers while we're at it
+
+          flower_fams <-
+            BIEN_fams$scrubbed_family[which(BIEN_fams$higher_plant_group %in%
+                                              c("flowering plants"))]
+          flower_fams <- unique(flower_fams)
+
+          wcvp_flower <-
+            wcvp %>%
+            filter(family %in% flower_fams)
+
+          saveRDS(object = wcvp_flower,
+                  file = "manual_downloads/WCVP/wcvp_cleaned_flower.RDS")
+
+          wcvp_flower <- readRDS(file = "manual_downloads/WCVP/wcvp_cleaned_flower.RDS")
+
+          rm(wcvp,seed_fams,flower_fams,fams,BIEN_fams)
+
+
+
+      # Identify traits
+
+          traits <- arrow::open_dataset(sources = "manual_downloads/TRY/TRY_parquet/")
+
+          traits %>%
+            group_by(TraitName) %>%
+            summarize(count = n()) %>%
+            collect() -> trait_counts
+
+
+
+          traits %>%
+            filter(grepl(pattern = "seed", ignore.case = TRUE,x = TraitName)|
+                     grepl(pattern = "flower", ignore.case = TRUE,x = TraitName)|
+                     grepl(pattern = "inflorescence", ignore.case = TRUE,x = TraitName)) %>% #filter to only traits pertaining to wood
+            select(AccSpeciesName,TraitName) %>%
+            group_by(AccSpeciesName, TraitName)%>%
+            summarize(n = n())%>%
+            collect() -> flower_and_seed_trait_summary
+
+          #check/fix wood species names
+          good_flower_and_seed_summary <- flower_and_seed_trait_summary[which(flower_and_seed_trait_summary$AccSpeciesName %in% wcvp_flower$taxon_name|
+                                                                                flower_and_seed_trait_summary$AccSpeciesName %in% wcvp_seed$taxon_name  ),]
+
+          bad_flower_and_seed_summary <- flower_and_seed_trait_summary[which(!(flower_and_seed_trait_summary$AccSpeciesName %in% wcvp_flower$taxon_name|
+                                                                               flower_and_seed_trait_summary$AccSpeciesName %in% wcvp_seed$taxon_name)),]
+
+
+
+          #nrow(good_flower_and_seed_summary)+nrow(bad_flower_and_seed_summary)==nrow(flower_and_seed_trait_summary)
+
+
+          bad_flower_and_seed_names <-
+          bad_flower_and_seed_summary %>%
+            dplyr::select(AccSpeciesName) %>%
+            ungroup() %>%
+            unique() %>%
+            mutate(ID=row_number()) %>%
+            select(ID,AccSpeciesName)
+
+          TNRSed_bad_flower_and_seed_names <-
+            TNRS::TNRS(taxonomic_names = bad_flower_and_seed_names,
+                       sources = "wcvp")
+
+          bad_flower_and_seed_names <-
+            bad_flower_and_seed_names %>%
+            inner_join(y = TNRSed_bad_flower_and_seed_names %>%
+                         mutate(ID=as.numeric(ID)), by = "ID")
+
+          bad_flower_and_seed_summary <-
+            bad_flower_and_seed_names %>%
+            select(AccSpeciesName, Accepted_species) %>%
+            right_join(bad_flower_and_seed_summary) %>%
+            dplyr::select(-AccSpeciesName) %>%
+            rename("AccSpeciesName"  = Accepted_species)
+
+          flower_and_seed_trait_summary <-
+            good_flower_and_seed_summary %>%
+            bind_rows(bad_flower_and_seed_summary) %>%
+            group_by(AccSpeciesName,TraitName) %>%
+            summarise(n=sum(n)) %>%
+            filter(AccSpeciesName != "")
+
+          rm(good_flower_and_seed_summary,
+             bad_flower_and_seed_names,
+             bad_flower_and_seed_summary)
+
+
+        #split into flower summary and seed summary
+
+          flower_and_seed_trait_summary %>%
+          filter(grepl(pattern = "seed", ignore.case = TRUE,x = TraitName)) %>% #filter to only traits pertaining to seeds
+            select(AccSpeciesName,TraitName) %>%
+            group_by(AccSpeciesName, TraitName)%>%
+            summarize(n = n())%>%
+            collect() -> seed_trait_summary
+
+
+          seed_traits_to_omit <-
+            c("Fruit/seed conspicuous",
+              "Fruit/seed color",
+              "Fruit/seed abundance",
+              "Seedling vigor",
+              "Plant morphological adaptations: seed or dispersal unit metamorphoses",
+              "Seed number per inflorescence (total, fertile, infertile)",
+              "Seed number per flower",
+              "Seed number per ramet",
+              "Seed or fruit biomass per ground area",
+              "Seed mass per inflorescence")
+
+
+          seed_trait_summary <-
+          seed_trait_summary %>%
+            filter(!TraitName %in% seed_traits_to_omit)
+
+
+          n_seed_species <- length(unique(wcvp_seed$taxon_name))
+
+
+          seed_trait_summary %>%
+            group_by(AccSpeciesName, TraitName) %>%
+            count() %>%
+            ungroup() %>%
+            group_by(TraitName) %>%
+            count() %>%
+            collect() %>%
+            mutate(pct_coverage_clean = (n/n_seed_species)*100) %>%
+            rename(n_clean = n) -> seed_trait_list
+
+          n_seed_species
+
+          seed_traits_focal <-
+            seed_trait_coverage %>%
+            filter(trait %in% seed_trait_list$TraitName[which(seed_trait_list$pct_coverage_clean >= 1)])
+
+
+          # seed_trait_coverage <-
+          #   get_trait_coverage(wcvp = wcvp_seed,
+          #                      trait_summary = seed_trait_summary)
+
+          # saveRDS(object = seed_trait_coverage,
+          #         file = "data/seed_trait_coverage.rds")
+
+          # Need to also look how good any of the coverage is for wood traits
+
+
+          # focal dataset as per the others
+
+          seed_traits_focal <-
+            seed_trait_coverage %>%
+            filter(trait %in% seed_trait_list$TraitName[which(seed_trait_list$pct_coverage_clean >= 1)])
+
+
+          # saveRDS(object = seed_traits_focal,
+          #         file = "data/focal_seed_trait_coverage.rds")
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+            #split into flower summary and seed summary
+
+            flower_and_seed_trait_summary %>%
+            filter(grepl(pattern = "flower", ignore.case = TRUE,x = TraitName)|
+                     grepl(pattern = "inflorescence", ignore.case = TRUE,x = TraitName) ) %>% #filter to only traits pertaining to seeds
+            filter(!grepl(pattern = "litter",ignore.case = TRUE,x = TraitName)) %>% #ignore litter traits that might include flowers
+              filter(!grepl(pattern = "Plant dead organ retainment: leaves, branches, flowers",ignore.case = TRUE,x = TraitName)) %>%
+            select(AccSpeciesName,TraitName) %>%
+            group_by(AccSpeciesName, TraitName)%>%
+            summarize(n = n()) -> flower_trait_summary
+
+          # flower_trait_summary%>%
+          #   group_by(TraitName)%>%
+          #   summarise(n=n())-> flower_trait_counts
+
+
+          n_flower_species <- length(unique(wcvp_flower$taxon_name))
+
+
+          flower_trait_summary %>%
+            group_by(AccSpeciesName, TraitName) %>%
+            count() %>%
+            ungroup() %>%
+            group_by(TraitName) %>%
+            count() %>%
+            collect() %>%
+            mutate(pct_coverage_clean = (n/n_flower_species)*100) %>%
+            rename(n_clean = n) -> flower_trait_list
+
+          n_flower_species
+
+
+          flower_trait_coverage <-
+            get_trait_coverage(wcvp = wcvp_flower,
+                               trait_summary = flower_trait_summary)
+
+          saveRDS(object = flower_trait_coverage,
+                  file = "data/flower_trait_coverage.rds")
+
+
+
+
+
+
+
+
+
+
+
 
 
 
