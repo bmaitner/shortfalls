@@ -23,21 +23,21 @@ library(tricolore)
   tdwg <-
   general_traits_one_percent_threshold %>%
     group_by(area) %>%
-    summarise(mean_coverage = mean (completeness))%>%
+    summarise(mean_coverage_focal = mean (completeness))%>%
     right_join(x = tdwg,
                y = .,
                by = c("LEVEL_3_CO"="area"))
 
 tdwg %>% st_transform(crs = st_crs(6933))%>%
 ggplot()+
-  geom_sf(mapping = aes(fill = mean_coverage*100))+
+  geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
   scale_fill_viridis_b(name = "Mean \ncoverage \n(%)")+
   theme_minimal()
 
 
 tdwg %>% st_transform(crs = st_crs(6933))%>%
   ggplot()+
-  geom_sf(mapping = aes(fill = mean_coverage*100))+
+  geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
   scale_fill_gradient(low = "white",
                       high = "magenta",
                       name = "Mean \ncoverage\n(%)",
@@ -61,13 +61,13 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
                by = c("LEVEL_3_CO"))
 
   tdwg %>%
-    mutate(TRAIT_COVERAGE = mean_coverage*100)->tdwg
+    mutate(TRAIT_COVERAGE = mean_coverage_focal*100)->tdwg
 
 
 #GEN_DUP,BIEN_OCCUR
 
   library(tricolore)
-  tric <- Tricolore(tdwg, p1 = 'GEN_DUP', p2 = 'BIEN_OCCUR', p3 = 'mean_coverage')
+  tric <- Tricolore(tdwg, p1 = 'GEN_DUP', p2 = 'BIEN_OCCUR', p3 = 'mean_coverage_focal')
 
 
   tdwg$rgb <- tric$rgb
@@ -139,17 +139,17 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
   wood_traits_focal_one_percent_threshold <- readRDS("data/focal_wood_trait_coverage.rds")
 
 
-  wood_tdwg <-
+  tdwg <-
     wood_traits_focal_one_percent_threshold %>%
     group_by(area) %>%
-    summarise(mean_coverage = mean (completeness))%>%
+    summarise(wood_mean_coverage = mean (completeness))%>%
     right_join(x = tdwg,
                y = .,
                by = c("LEVEL_3_CO"="area"))
 
   wood_tdwg %>% st_transform(crs = st_crs(6933))%>%
     ggplot()+
-    geom_sf(mapping = aes(fill = mean_coverage*100))+
+    geom_sf(mapping = aes(fill = wood_mean_coverage*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Mean \ncoverage\n(%)",
@@ -158,8 +158,119 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
 
 #############################################
 
+  # flower map
+
+  flower_traits_focal_one_percent_threshold <- readRDS("data/focal_flower_trait_coverage.rds")
+
+
+  tdwg <-
+    flower_traits_focal_one_percent_threshold %>%
+    group_by(area) %>%
+    summarise(flower_mean_coverage = mean (completeness))%>%
+    right_join(x = tdwg,
+               y = .,
+               by = c("LEVEL_3_CO"="area"))
+
+  tdwg %>% st_transform(crs = st_crs(6933))%>%
+    ggplot()+
+    geom_sf(mapping = aes(fill = flower_mean_coverage*100))+
+    scale_fill_gradient(low = "white",
+                        high = "magenta",
+                        name = "Mean \ncoverage\n(%)",
+                        limits=c(0,100))+
+    theme_minimal()+ggtitle("Flower Traits")
+
+  #############################################
+
+
+  # seed map
+
+  seed_traits_focal_one_percent_threshold <- readRDS("data/focal_seed_trait_coverage.rds")
+
+
+  tdwg <-
+    seed_traits_focal_one_percent_threshold %>%
+    group_by(area) %>%
+    summarise(seed_mean_coverage = mean (completeness))%>%
+    right_join(x = tdwg,
+               y = .,
+               by = c("LEVEL_3_CO"="area"))
+
+  tdwg %>% st_transform(crs = st_crs(6933))%>%
+    ggplot()+
+    geom_sf(mapping = aes(fill = seed_mean_coverage*100))+
+    scale_fill_gradient(low = "white",
+                        high = "magenta",
+                        name = "Mean \ncoverage\n(%)",
+                        limits=c(0,100))+
+    theme_minimal()+ggtitle("Seed Traits")
+
+  ##############################################
+
 
   # Endemism map
+
+
+  ##############################################
+
+  #correlations
+
+  tdwg_info <- st_drop_geometry(tdwg)
+
+  tri<-tdwg_info%>%
+    dplyr::select(GEN_DUP,BIEN_OCCUR,mean_coverage_focal)
+
+
+  library(corrplot)
+  corrplot()
+?corrplot
+
+
+  data_for_cor<-
+  tdwg_info %>%
+    dplyr::select(mean_coverage_focal,
+           mean_geo_coverage,
+           wood_mean_coverage,
+           flower_mean_coverage,
+           seed_mean_coverage,
+           GEN_DUP,
+           BIEN_OCCUR)
+
+
+
+  correlations <- cor(data_for_cor,method = "pearson")
+  colnames(correlations)<- c("General Traits","Georeferenced Traits",
+                             "Wood Traits","Flower Traits",
+                             "Seed Traits","Genes","Occurrences")
+
+  rownames(correlations)<- c("General Traits","Georeferenced Traits",
+                             "Wood Traits","Flower Traits",
+                             "Seed Traits","Genes","Occurrences")
+
+
+  correlation_pvals <- cor.mtest(data_for_cor,
+                                 conf.level = 0.95,
+                                 method="pearson",alternative="two.sided",exact = TRUE)
+
+
+  corrplot(  cor(data_for_cor),
+             addCoef.col="black")
+
+
+  corrplot( correlations ,
+             addCoef.col="black",
+             order = "FPC",
+             tl.col = "black",
+            p.mat = correlation_pvals$p,
+            lowCI.mat = correlation_pvals$lowCI,
+            uppCI.mat = correlation_pvals$uppCI,plotCI = "circle")
+
+
+  corrplot( correlations ,
+            addCoef.col="black",
+            order = "FPC",
+            tl.col = "black",
+            p.mat = correlation_pvals$p)
 
 
 

@@ -91,7 +91,7 @@ traits$metadata
               all.x = TRUE) %>%
           mutate(endemics = replace_na(endemics,0)) %>%
           mutate(endemism = endemics/richness) %>%
-          select(-endemics) -> general_traits_one_percent_threshold
+          dplyr::select(-endemics) -> general_traits_one_percent_threshold
 
 
   #rescale predictors
@@ -222,6 +222,8 @@ library(tidyverse)
 
 
   #trying spamm
+    # https://datascienceplus.com/spatial-regression-in-r-part-1-spamm-vs-glmmtmb/
+    # https://kimura.univ-montp2.fr/~rousset/spaMM/spaMMintro.pdf
   library(spaMM)
 
   m_spamm <-
@@ -561,32 +563,32 @@ library(tidyverse)
 
       confint(object = geo_m_spamm,
               parm = c("(Intercept)"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("AREA_SQKM"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("GDP_SUM"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("GDP_CAPITA"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("ROAD_DENSITY"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("POP_COUNT"),
-              boot_args = list(nb_cores=4, nsim=20, seed=123))
-
-      confint(object = geo_m_spamm,
-              parm = c("POP_DENSITY"),
               boot_args = list(nb_cores=2, nsim=100, seed=123))
 
+      # confint(object = geo_m_spamm,
+      #         parm = c("AREA_SQKM"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("GDP_SUM"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("GDP_CAPITA"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("ROAD_DENSITY"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("POP_COUNT"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # confint(object = geo_m_spamm,
+      #         parm = c("POP_DENSITY"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+      #
       # confint(object = geo_m_spamm,
       #         parm = c("SECURITY"),
       #         boot_args = list(nb_cores=2, nsim=100, seed=123))
@@ -684,7 +686,6 @@ climate_data$changes_by_years%>%
              by = c("country" = "area"))-> climate_by_year
 
 climate_data$changes_overall%>%
-  filter()
   inner_join(y = mean_completeness,
              by = c("country" = "area"))-> climate_overall
 
@@ -743,7 +744,7 @@ climate_overall %>%
     stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~"))) +
     stat_poly_line() +
     geom_point()+
-  ylab("Mean Trait Completness")+
+  ylab("Mean Trait Completeness")+
   xlab("Mean Difference from Present")
 
 climate_overall %>%
@@ -758,11 +759,126 @@ climate_overall %>%
   xlab("SD Difference from Present")
 
 
-tdwg%>%
-  left_join(y = climate_overall%>%
-              filter(bio==1),
-            by = c("LEVEL_3_CO" = "country")) -> test
-test$mean_difference
+climate_overall %>%
+  dplyr::select(bio,country,mean_completeness)->clim_comp
+climate_overall %>%
+  dplyr::select(bio,country,mean_difference)->clim_mean
+climate_overall %>%
+  dplyr::select(bio,country,sd_difference)->clim_sd
+
+clim_mean %>%
+  inner_join(y = bio_lookup)%>%
+  ungroup()%>%
+  dplyr::select(-variable,-bio)%>%
+  pivot_wider(names_from = variable_short,
+              values_from = mean_difference, names_prefix = "Diff. ")->clim_mean
+
+clim_sd %>%
+  inner_join(y = bio_lookup)%>%
+  ungroup()%>%
+  dplyr::select(-variable,-bio)%>%
+  pivot_wider(names_from = variable_short,
+              values_from = sd_difference, names_prefix = "SD. Diff. ")->clim_sd
+
+clim_comp %>%
+  ungroup()%>%
+  dplyr::select(country,mean_completeness)%>%unique()->clim_comp
+
+library(corrplot)
+
+
+clim_comp%>%
+  inner_join(clim_mean)%>%
+  inner_join(clim_sd)%>%
+  dplyr::select(-country)%>%
+  rename("Mean Completeness"= mean_completeness)%>%
+corrplot::cor.mtest()->clim_mean_p
+
+
+
+clim_comp%>%
+  inner_join(clim_mean)%>%
+  inner_join(clim_sd)%>%
+  dplyr::select(-country)%>%
+  rename("Mean Completeness" = mean_completeness)%>%
+  na.omit()%>%
+  cor()%>%
+corrplot( is.corr = TRUE,
+          tl.col = "black",
+          p.mat = clim_mean_p$p,
+          pch.cex = .75,
+          tl.cex = .75,
+          order = "FPC")
+
+
+clim_comp%>%
+  inner_join(clim_mean)%>%
+  inner_join(clim_sd)%>%
+  dplyr::select(-country)%>%
+  rename("Mean Completeness" = mean_completeness)%>%
+  na.omit()%>%
+  cor()->test
+
+test <-
+data.frame(mean_completeness= test[,1],
+           p = round(clim_mean_p$p[,1],digits = 3))
+
+
+###########################
+
+# Completeness vs human impact
+
+lbii <- raster::raster("manual_downloads/lbii.asc") #https://data.nhm.ac.uk/dataset/global-map-of-the-biodiversity-intactness-index-from-newbold-et-al-2016-science
+lbii
+crs(lbii) <- 4326
+plot(lbii) #higher values = more intact
+
+lbii_ea <-
+  projectRaster(from = lbii,
+                res = 10000,
+                crs = 6933,
+                method = "bilinear")
+
+plot(lbii_ea)
+
+tdwg$biodiv_intactness <-
+  raster::extract(x = lbii_ea,
+                  y = tdwg) %>%
+  lapply(X = ., FUN = function(x){mean(x, na.rm=TRUE)}) %>%
+  unlist()
+
+
+
+human_footprint <- raster::raster("manual_downloads/hfp_global_geo_grid/hf_v2geo/") #https://sedac.ciesin.columbia.edu/data/set/wildareas-v2-human-footprint-geographic/data-download#openModal
+plot(human_footprint) #higher values = less intact
+
+human_footprint_ea <-
+projectRaster(from = human_footprint,
+              res = 10000,
+              crs = 6933,
+              method = "bilinear")
+
+tdwg$human_footprint <-
+raster::extract(x = human_footprint_ea,
+                y = tdwg) %>%
+lapply(X = ., FUN = function(x){mean(x, na.rm=TRUE)}) %>%
+  unlist()
+
+
+general_traits_one_percent_threshold %>%
+  group_by(area) %>%
+  summarize(mean_trait_completeness = mean(completeness))%>%
+  inner_join(y = tdwg,
+             by = c("area"="LEVEL_3_CO"))->tdwg_w_human
+
+plot(human_footprint_ea)
+cor.test(x = tdwg_w_human$mean_trait_completeness,
+         y = tdwg_w_human$human_footprint)# Pearson = 0.18, p = 0.001
+
+plot(lbii_ea)
+cor.test(x = tdwg_w_human$mean_trait_completeness,
+         y = tdwg_w_human$biodiv_intactness)# Pearson = - 0.04, p = 0.497
+
 
 ############################
 
@@ -877,8 +993,6 @@ test$mean_difference
   #Euler
   library(eulerr)
 
-  euler(combinations = data_availability)
-
 data_availability%>%
   dplyr::select(c("trait_data","distribution_data","genetic_data"))%>%
   mutate(species = 1)%>%
@@ -889,10 +1003,203 @@ eu %>%
        quantities =TRUE,
        fills=list(fill = c("#FF80F7", "#00D1D0","#CFB000",NA), alpha = 0.5))
 
+
+
+cor.test(x = data_availability$trait_data,y = data_availability$distribution_data)
+cor.test(x = data_availability$trait_data,y = data_availability$genetic_data)
+
 ############################
+
+
+# Trait completeness model: 1% threshold and broadly applicable traits
+#via a single model
+
+# Load overall trait completeness
+general_traits_one_percent_threshold <- read_rds("data/focal_trait_coverage.rds")
+
+# merge with predictor variables
+socio_vars <- read.csv("manual_downloads/Darwinian_shortfalls/socioeco_var.csv")
+#socio_vars[2:10] <- scale(socio_vars[2:10])
+
+# combine trait completeness and predictor variables
+general_traits_one_percent_threshold <-
+  merge(x = general_traits_one_percent_threshold,
+        y = socio_vars,
+        by.x= "area",
+        by.y = "LEVEL_3_CO")
+
+# add species richness
+wcvp <- readRDS("manual_downloads/WCVP/wcvp_cleaned.RDS")
+
+wcvp %>%
+  group_by(area_code_l3) %>%
+  summarise(richness = n()) %>%
+  merge(x = general_traits_one_percent_threshold,
+        y = .,
+        by.x = "area",
+        by.y = "area_code_l3",
+        all.x = TRUE) ->
+  general_traits_one_percent_threshold
+
+# Add mean range size
+
+socio_vars %>%
+  dplyr::select(LEVEL_3_CO, AREA_SQKM) %>%
+  merge(x = wcvp,
+        y = .,
+        by.x = "area_code_l3",
+        by.y = "LEVEL_3_CO",
+        all.x = TRUE) %>%
+  group_by(taxon_name) %>%
+  summarise(range_size = sum(AREA_SQKM)) %>%
+  merge(x = wcvp,
+        y = .,by = "taxon_name",
+        all.x = TRUE) %>%
+  group_by(area_code_l3) %>%
+  summarise(mean_species_range = mean(na.omit(range_size))) %>%
+  merge(x = general_traits_one_percent_threshold,
+        y = .,
+        by.x="area",
+        by.y = "area_code_l3") -> general_traits_one_percent_threshold
+
+# Add endemism
+
+wcvp %>%
+  group_by(taxon_name) %>%
+  summarize(n_countries = n()) %>%
+  merge(x = wcvp,
+        y = .) %>%
+  group_by(area_code_l3) %>%
+  filter(n_countries == 1) %>%
+  summarise(endemics = n()) %>%
+  merge(x = general_traits_one_percent_threshold,
+        y = .,
+        by.x = "area",
+        by.y = "area_code_l3",
+        all.x = TRUE) %>%
+  mutate(endemics = replace_na(endemics,0)) %>%
+  mutate(endemism = endemics/richness) %>%
+  dplyr::select(-endemics) -> general_traits_one_percent_threshold
+
+general_traits_wide <-
+general_traits_one_percent_threshold %>%
+  pivot_wider(names_from = "trait", values_from = "completeness")
+
+
+general_traits_wide %>%
+  mutate(mean_completeness = rowMeans(dplyr::select(general_traits_wide,colnames(general_traits_wide)[14:67]))) -> general_traits_wide
+
+correlations <- cor(general_traits_wide[14:68],method = "pearson")
+
+cnc <- colnames(correlations)
+cnc_short <- sapply(X = cnc,FUN = function(x){substr(x = x,start = 1,stop = 22)})
+
+  cnc_short <-
+  lapply(X = 1:length(cnc),FUN = function(x){
+
+    if(str_length(cnc_short)[x]!=str_length(cnc)[x]){
+      cnc_short[x] <- paste(cnc_short[x],"...",sep = "")
+
+    }else{
+      cnc_short[x]
+    }
+
+  })%>%
+    unlist()%>%
+    as.character()
+
+
+colnames(correlations)<-cnc_short
+rownames(correlations)<- cnc_short
+
+correlation_pvals <- cor.mtest(general_traits_wide[14:68],
+                               conf.level = 0.95,
+                               method="pearson",alternative="two.sided",exact = TRUE)
+
+
+
+#correlations of individual traits with overall mean
+
+
+corrplot( correlations ,
+          addCoef.col="black",
+          order = "FPC",
+          tl.col = "black",
+          p.mat = correlation_pvals$p,
+          lowCI.mat = correlation_pvals$lowCI,
+          uppCI.mat = correlation_pvals$uppCI,plotCI = "circle")
+
+
+corrplot( correlations ,
+          order = "FPC",
+          tl.col = "black",
+          tl.cex = 0.75,
+          p.mat = correlation_pvals$p,
+          pch.cex = .75)
+
+
+#correlations of predictor variables with overall mean
+
+pred_corrs <- general_traits_wide[c(2:13,68)]
+pred_corrs <- scale(pred_corrs)
+
+pred_correlations <- cor(pred_corrs,method = "pearson")
+
+
+pred_pvals <- cor.mtest(pred_corrs,
+                               conf.level = 0.95,
+                               method="pearson",alternative="two.sided",exact = TRUE)
+
+
+
+#correlations of predictors (weak as expected)
+
+
+corrplot( pred_correlations,
+          addCoef.col="black",
+          order = "FPC",
+          tl.col = "black",
+          p.mat = pred_pvals$p)
+
+
 
 
 ####################################
 
+
+
+
+
+# get_citations <- function(directory, out_file = NULL){
+#
+#   packages <-
+#   list.files(path = directory,
+#              recursive = TRUE,
+#              pattern = ".R$",
+#              full.names = TRUE) %>%
+#   questionr::qscan(load = FALSE) %>%
+#     unlist() %>%
+#     as.vector()
+#
+#
+#   out <- sapply(packages,
+#          FUN = function(x){
+#
+#           cite <- tryCatch(expr = toBibtex(citation(x)),
+#                    error = function(e){})
+#
+#           if(!is.null(cite) & is.null(out_file)){
+#             write(x = cite,
+#                   file = out_file,
+#                   append = TRUE)
+#             }
+#
+#
+#          })
+#
+#   return(out)
+#
+#
+# }
 
 

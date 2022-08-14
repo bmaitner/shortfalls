@@ -189,7 +189,7 @@ n_species <- length(unique(wcvp$taxon_name))
       #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
       rbind(good_names, bad_names) %>%
         group_by(AccSpeciesName, TraitName) %>%
-        summarize(n = sum(n)) -> trait_summary # 1 320 574
+        summarize(n = sum(n)) -> trait_summary # 1 446 171
 
 
 
@@ -284,12 +284,12 @@ source("R/get_trait_coverage.R")
 
 
 
-  # trait_coverage <-
-  #   get_trait_coverage(wcvp = wcvp,
-  #                      trait_summary = trait_summary_for_main_analysis)
+  trait_coverage <-
+    get_trait_coverage(wcvp = wcvp,
+                       trait_summary = trait_summary_for_main_analysis)
 
-  # saveRDS(object = trait_coverage,
-  #         file = "data/focal_trait_coverage.rds")
+  saveRDS(object = trait_coverage,
+          file = "data/focal_trait_coverage.rds")
 
 
 
@@ -974,8 +974,6 @@ traits %>%
           # saveRDS(object = seed_trait_coverage,
           #         file = "data/seed_trait_coverage.rds")
 
-          # Need to also look how good any of the coverage is for wood traits
-
 
           # focal dataset as per the others
 
@@ -1031,6 +1029,19 @@ traits %>%
 
           saveRDS(object = flower_trait_coverage,
                   file = "data/flower_trait_coverage.rds")
+
+          # focal dataset as per the others
+
+          flower_traits_focal <-
+            flower_trait_coverage %>%
+            filter(trait %in% flower_trait_list$TraitName[which(flower_trait_list$pct_coverage_clean >= 1)])
+
+          length(unique(flower_traits_focal$trait))
+
+
+          # saveRDS(object = flower_traits_focal,
+          #         file = "data/focal_flower_trait_coverage.rds")
+          #
 
 
 
