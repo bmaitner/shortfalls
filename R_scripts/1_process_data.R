@@ -60,8 +60,8 @@ wcvp <- subset(wcvp, !family %in% moss$family)
 #Make a duplicate dataset without ferns (for comparison to the Darwinian paper)
 wcvp_no_ferns <- subset(wcvp, !family %in% ferns$family)
 
-saveRDS(object = wcvp, file = "manual_downloads/WCVP/wcvp_cleaned.RDS")
-saveRDS(object = wcvp_no_ferns, file = "manual_downloads/WCVP/wcvp_cleaned_no_ferns.RDS",)
+# saveRDS(object = wcvp, file = "manual_downloads/WCVP/wcvp_cleaned.RDS")
+# saveRDS(object = wcvp_no_ferns, file = "manual_downloads/WCVP/wcvp_cleaned_no_ferns.RDS",)
 
 n_species <- length(unique(wcvp$taxon_name))
 
@@ -270,6 +270,8 @@ n_species <- length(unique(wcvp$taxon_name))
       saveRDS(object = trait_summary_for_main_analysis,file = "data/trait_summary_for_main_analysis.RDS")
       saveRDS(object = trait_list,file = "data/trait_list_w_coverage.RDS")
 
+      #trait_summary_for_main_analysis<-  readRDS("data/trait_summary_for_main_analysis.RDS")
+
 
 ###########################################################
   # We need a dataset that lists completeness as a function of country x trait, which we can join to the shapefile for plotting or use in other analyses
@@ -283,25 +285,29 @@ source("R/get_trait_coverage.R")
 
 
 
+#
+#   trait_coverage <-
+#     get_trait_coverage(wcvp = wcvp,
+#                        trait_summary = trait_summary_for_main_analysis)
+#
+#   saveRDS(object = trait_coverage,
+#           file = "data/focal_trait_coverage.rds")
 
-  trait_coverage <-
-    get_trait_coverage(wcvp = wcvp,
-                       trait_summary = trait_summary_for_main_analysis)
-
-  saveRDS(object = trait_coverage,
-          file = "data/focal_trait_coverage.rds")
 
 
+  # family_trait_coverage
 
-  #family_trait_coverage
-
-    # family_trait_coverage <-
-    # get_family_trait_coverage(wcvp = wcvp,
-    #                           trait_summary = trait_summary_for_main_analysis,
-    #                           temp_file = "temp/temp_family_trait_coverage.RDS")
+    # source("R/get_family_trait_coverage.R")
     #
-    # saveRDS(object = family_trait_coverage,
-    #         file = "data/focal_trait_coverage_family.rds")
+    #   family_trait_coverage <-
+    #   get_family_trait_coverage(wcvp = wcvp,
+    #                             trait_summary = trait_summary_for_main_analysis,
+    #                             temp_file = "temp/temp_family_trait_coverage.RDS")
+    #
+    #   saveRDS(object = family_trait_coverage,
+    #           file = "data/focal_trait_coverage_family.rds")
+
+  family_trait_coverage <- readRDS("data/focal_trait_coverage_family.rds")
 
   trait_coverage <- read_rds("data/focal_trait_coverage.rds")
 
@@ -352,6 +358,18 @@ ggplot(data = countries)+
   scale_fill_viridis_c(option = "plasma")+
   labs(fill = "%")+
   ggtitle("Leaf area per leaf dry mass (specific leaf area, SLA or 1/LMA): undefined if petiole is in- or excluded")
+
+# Numbers for trait coverage
+
+  min(trait_coverage$completeness)
+  max(trait_coverage$completeness)
+
+  mean_completeness_across_country_trait <-
+  trait_coverage %>%
+    group_by(trait) %>%
+    summarise(mean_coverage = mean(completeness))
+  min(mean_completeness_across_country_trait$mean_coverage)*100
+  max(mean_completeness_across_country_trait$mean_coverage)*100
 
 ##############################################################################
 
@@ -474,6 +492,13 @@ traits %>%
 
         rm(stc_trait_list_v2)
 
+        stc_trait_list$pct_coverage_clean[which(is.na(stc_trait_list$pct_coverage_clean))] <- 0
+
+        # What is the mean coverage across all georeferenced traits?
+
+          mean(stc_trait_list$pct_coverage_clean)
+
+
         # How many traits with observation of at least 1%, and are general?
         length(which(stc_trait_list$pct_coverage_clean >= 1 &
                        stc_trait_list$general == 1)) #29
@@ -482,6 +507,13 @@ traits %>%
         traits_for_geo_analysis <-
           stc_trait_list %>%
           filter(pct_coverage_clean >= 1 & general == 1)
+
+        # coverage stats for the focal geo dataset
+        traits_for_geo_analysis[which.max(traits_for_geo_analysis$pct_coverage_clean),]#5.46
+        traits_for_geo_analysis[which.min(traits_for_geo_analysis$pct_coverage_clean),]#1.04
+        mean(traits_for_geo_analysis$pct_coverage_clean)#1.82
+        median(traits_for_geo_analysis$pct_coverage_clean)#1.63
+
 
         trait_summary_for_geo_analysis <-
           stc %>%

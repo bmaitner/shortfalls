@@ -165,6 +165,12 @@ traits$metadata
                  lw,
                  alternative = "greater")
 
+      # Moran I statistic standard deviate = 274.72, p-value < 2.2e-16
+      # alternative hypothesis: greater
+      # sample estimates:
+      #   Moran I statistic       Expectation          Variance
+      # 2.550459e-01     -4.940956e-05      8.622476e-07
+
       moran_test_two_sided <- moran.test(tdwg_combined$completeness,
                                         lw,
                                         alternative = "two.sided")
@@ -175,10 +181,30 @@ traits$metadata
                     nsim = 999,
                     alternative = "greater")
 
+      # Monte-Carlo simulation of Moran I
+      #
+      # data:  tdwg_combined$completeness
+      # weights: lw
+      # number of simulations + 1: 1000
+      #
+      # statistic = 0.25505, observed rank = 1000, p-value = 0.001
+      # alternative hypothesis: greater
+
       MC_test_combined_two_sided <- moran.mc(tdwg_combined$completeness,
                                    lw,
                                    nsim = 999,
                                    alternative = "two.sided")
+
+      # Monte-Carlo simulation of Moran I
+      #
+      # data:  tdwg_combined$completeness
+      # weights: lw
+      # number of simulations + 1: 1000
+      #
+      # statistic = 0.25505, observed rank = 1000, p-value < 2.2e-16
+      # alternative hypothesis: two.sided
+
+
 
   moran_test_combined
   MC_test_combined
@@ -255,58 +281,57 @@ library(tidyverse)
 
     # ------------ Fixed effects (beta) ------------
     #   Estimate Cond. SE  t-value
-    # (Intercept)        -1.971818 0.155355 -12.6923
-    # AREA_SQKM          -0.002878 0.015211  -0.1892
-    # GDP_SUM            -0.006243 0.008596  -0.7263
-    # GDP_CAPITA         -0.011658 0.008598  -1.3559
-    # ROAD_DENSITY        0.007931 0.007888   1.0055
-    # POP_COUNT           0.002478 0.010361   0.2392
-    # POP_DENSITY         0.022487 0.010265   2.1907
-    # SECURITY           -0.011157 0.010419  -1.0709
-    # RESEARCH_EXP        0.059530 0.014590   4.0801
-    # EDUCATION_EXP      -0.006837 0.007870  -0.8687
-    # richness           -0.089564 0.014333  -6.2489
-    # mean_species_range  0.385158 0.017740  21.7113
-    # endemism           -0.125133 0.012753  -9.8120
+    # (Intercept)        -1.855277 0.154177 -12.0334
+    # AREA_SQKM          -0.008144 0.014850  -0.5484
+    # GDP_SUM            -0.006493 0.008456  -0.7678
+    # GDP_CAPITA         -0.010972 0.008538  -1.2851
+    # ROAD_DENSITY        0.007242 0.007795   0.9290
+    # POP_COUNT           0.003991 0.010130   0.3939
+    # POP_DENSITY         0.021014 0.010137   2.0730
+    # SECURITY           -0.012117 0.010281  -1.1786
+    # RESEARCH_EXP        0.060333 0.014348   4.2050
+    # EDUCATION_EXP      -0.006242 0.007773  -0.8030
+    # richness           -0.089006 0.014061  -6.3302
+    # mean_species_range  0.399891 0.017347  23.0521
+    # endemism           -0.128450 0.012497 -10.2784
 
 
   #Check confidence intervals
     confint(object = m_spamm,
-                   parm = c("AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
+                   parm = c("(Intercept)","AREA_SQKM","GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
                             "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
                             "EDUCATION_EXP",
                             "richness","mean_species_range","endemism"))
 
-    confint(object = m_spamm,
-            parm = c("(Intercept)"))
-
+    #CIs
 
     # lower (Intercept) upper (Intercept)
-    # -2.313630         -1.635251
+    # -2.195835         -1.525245
     # lower AREA_SQKM upper AREA_SQKM
-    # -0.03304453      0.02733951
+    # -0.03758786      0.02137629
     # lower GDP_SUM upper GDP_SUM
-    # -0.02317210    0.01076032
+    # -0.02313497    0.01021238
     # lower GDP_CAPITA upper GDP_CAPITA
-    # -0.028761533      0.005237228
+    # -0.027943928      0.005807283
     # lower ROAD_DENSITY upper ROAD_DENSITY
-    # -0.007579177        0.023494870
+    # -0.008084352        0.022632342
     # lower POP_COUNT upper POP_COUNT
-    # -0.01790140      0.02284565
+    # -0.01593169      0.02390306
     # lower POP_DENSITY upper POP_DENSITY
-    # 0.002317483       0.042809915
+    # 0.00109606        0.04104828
     # lower SECURITY upper SECURITY
-    # -0.031635492    0.009369981
+    # -0.032323488    0.008141573
     # lower RESEARCH_EXP upper RESEARCH_EXP
-    # 0.03068766         0.08857076
+    # 0.03192910         0.08893986
     # lower EDUCATION_EXP upper EDUCATION_EXP
-    # -0.022325566         0.008648484
+    # -0.021540199         0.009049627
     # lower richness upper richness
-    # -0.11823147    -0.06085545
+    # -0.11699809    -0.06098231
     # lower mean_species_range upper mean_species_range
-    # 0.3484147                0.4221169
+    # 0.3639214                0.4361106
     # lower endemism upper endemism
-    # -0.15153308    -0.09865601
+    # -0.1540563     -0.1027810
+
 
   #Also check AICs
     AIC(m_spamm)
