@@ -8,7 +8,6 @@ source("R/try_to_parquet.R")
 
 ##########################################################
 
-# Exclude fern and moss families
 library(data.table)
 ferns <- fread("manual_downloads/Darwinian_shortfalls/fern_list.txt", quote = "", header = F, col.names = "family") # list of ferns
 moss <- fread("manual_downloads/Darwinian_shortfalls/bryophyta_list.txt", quote = "", header = F, col.names = "family") # list of mosses
@@ -22,6 +21,30 @@ wcvp <- read.table(file = "manual_downloads/WCVP/wcvp_distribution.txt",
                    quote = "",
                    fill = TRUE,
                    encoding = "UTF-8")
+
+  # How much of the world is covered by the wcvp?
+
+    # tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
+    #
+    # tdwg %>%
+    #   st_transform(crs = st_crs(6933)) %>%
+    #   mutate(area = st_area(geometry)) %>%
+    #   mutate(in_wcvp = LEVEL_3_CO %in% wcvp$area_code_l3) -> tdwg
+    #
+    # tdwg$LEVEL_NAME[which(tdwg$in_wcvp == FALSE)] # Only Bouvet Island doesn't have records.  They also have no vascular plants.
+    #
+    # tdwg %>%
+    #   group_by(in_wcvp) %>%
+    #   summarise(total_area = sum(area)) %>%
+    #   st_drop_geometry() %>%
+    #   ungroup() %>%
+    #   mutate(all_area = sum(total_area))%>%
+    #   mutate(pct_area = (total_area/all_area) * 100)-> tdwg
+    #
+    #   tdwg
+    #
+    #   rm(tdwg)
+
 
 wcvp_names <- read.table(file = "manual_downloads/WCVP/wcvp_names.txt",
                          sep = "|",
@@ -191,7 +214,9 @@ n_species <- length(unique(wcvp$taxon_name))
         group_by(AccSpeciesName, TraitName) %>%
         summarize(n = sum(n)) -> trait_summary # 1 446 171
 
-
+      #get counts of # of traits, # of species
+        length(unique(trait_summary$AccSpeciesName)) #128 929
+        length(unique(trait_summary$TraitName)) #1913
 
 
 ##########################################################
@@ -236,6 +261,21 @@ n_species <- length(unique(wcvp$taxon_name))
       hist(trait_list$pct_coverage_clean,breaks = 100,main = "Histogram of Trait Coverage",xlab = "Percent Coverage")
       hist(log10(trait_list$pct_coverage_clean),breaks = 100,main = "Histogram of Trait Coverage",xlab = "log(Percent Coverage)")
 
+
+
+      trait_list %>%
+        ggplot(mapping = aes(pct_coverage_clean))+
+        geom_histogram(fill = "magenta")+
+        #xlim(c(0,10000))+
+      scale_x_log10(labels = scales::label_number(accuracy = .0001),
+                    breaks=c(0,0.0001,0.001,0.01,.1,1,10,100),
+                    limits=c(0.0001,100))+
+        xlab("Percent Completeness (log scale)")+
+        ggtitle("Histogram of Trait Completeness")+
+        geom_vline(xintercept = 1,lty=2)
+
+
+
     #averages
 
       mean(na.omit(trait_list$pct_coverage_clean))# 0.20 %
@@ -267,8 +307,8 @@ n_species <- length(unique(wcvp$taxon_name))
         trait_summary %>%
         filter(TraitName %in% traits_for_main_analysis$TraitName)
 
-      saveRDS(object = trait_summary_for_main_analysis,file = "data/trait_summary_for_main_analysis.RDS")
-      saveRDS(object = trait_list,file = "data/trait_list_w_coverage.RDS")
+      # saveRDS(object = trait_summary_for_main_analysis,file = "data/trait_summary_for_main_analysis.RDS")
+      # saveRDS(object = trait_list,file = "data/trait_list_w_coverage.RDS")
 
       #trait_summary_for_main_analysis<-  readRDS("data/trait_summary_for_main_analysis.RDS")
 
@@ -1020,7 +1060,7 @@ traits %>%
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+######################################################################
 
 
             #split into flower summary and seed summary
@@ -1081,9 +1121,22 @@ traits %>%
 
 
 
+##########################################
+
+  #Trait coverage without ferns (for comparison with Rudbeck data)
 
 
+        source("R/get_trait_coverage.R")
+        wcvp_no_ferns <- readRDS("manual_downloads/WCVP/wcvp_cleaned_no_ferns.RDS")
+        trait_summary_for_main_analysis<-  readRDS("data/trait_summary_for_main_analysis.RDS")
 
+
+            trait_coverage_no_ferns <-
+              get_trait_coverage(wcvp = wcvp_no_ferns,
+                                 trait_summary = trait_summary_for_main_analysis)
+
+      # saveRDS(object = trait_coverage_no_ferns,
+      #         file = "data/focal_trait_coverage_no_ferns.rds")
 
 
 
@@ -1136,10 +1189,21 @@ traits %>%
     summarise(endemics = n())
 
 
+############################################
+
+# australia completeness
+
+    #remotes::install_github("traitecoevo/austraits", dependencies = TRUE, upgrade = "ask",build_vignettes = TRUE)
+    library(austraits)
+    vignette("austraits")
+
+    #version 3.0.2
+    aus <- austraits::load_austraits(version = austraits::get_version_latest(),
+                                     path = "data/austraits/")
 
 
-
-
+    oz_traits <- aus$traits
+    oz_trait_defs <- aus$definitions$traits
 
 
 
