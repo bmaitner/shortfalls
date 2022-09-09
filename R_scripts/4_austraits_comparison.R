@@ -31,12 +31,12 @@
 
 # Filter trait summary for Australian traits
   trait_summary_for_main_analysis %>%
-    dplyr::filter(AccSpeciesName %in% wcvp$taxon_name)
+    dplyr::filter(AccSpeciesName %in% wcvp$taxon_name) -> trait_summary_for_main_analysis
 
 # Get AusTraits
 
   austraits <- austraits::load_austraits(path = "data/austraits/",
-                                         version = get_version_latest())
+                                         version = "3.0.2")
 
 
   austraits <- austraits$traits
@@ -90,13 +90,32 @@
 
   rm(austry,bad_names,good_names,tnrsed_bad)
 
+
+#coverage improvement with AusTraits
+
+  nrow(trait_summary_for_main_analysis) # 71,234 species x trait combinations in TRY
+  length(unique(trait_summary_for_main_analysis$AccSpeciesName))#9,722 species in TRY
+  length(unique(trait_summary_for_main_analysis$TraitName)) #55
+
+  nrow(austraits) # 171,219
+  length(unique(austraits$AccSpeciesName)) #20,499
+  length(unique(austraits$TraitName)) #35
+
+
+
+
+
 # Get coverage with AusTraits
 
   all_data <- bind_rows(austraits, trait_summary_for_main_analysis)
 
   all_data %>%
-    group_by(AccSpeciesName,TraitName)%>%
+    group_by(AccSpeciesName,TraitName) %>%
     summarise(n = sum(n)) -> all_data
+
+    nrow(all_data) #200891
+    length(unique(all_data$AccSpeciesName))
+    length(unique(all_data$TraitName))
 
     trait_coverage_w_austraits <-
       get_trait_coverage(wcvp = wcvp,
@@ -104,6 +123,9 @@
 
     saveRDS(object = trait_coverage_w_austraits,
             file = "data/focal_trait_coverage_australia_w_austraits.rds")
+
+    length(unique(all_data$AccSpeciesName))/length(unique(wcvp$taxon_name)) #99.5% of species are represented
+
 
 
 

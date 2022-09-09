@@ -1022,8 +1022,9 @@ cor.test(x = data_availability$trait_data,y = data_availability$genetic_data)
 ############################
 
 
-# Trait completeness model: 1% threshold and broadly applicable traits
-#via a single model
+#Trait and variable correlations
+
+library(corrplot)
 
 # Load overall trait completeness
 general_traits_one_percent_threshold <- read_rds("data/focal_trait_coverage.rds")

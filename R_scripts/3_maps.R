@@ -519,32 +519,17 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
 
 
 
-
-
-
-
-
-
-  ##############################################
-
-
-  # Endemism map
-
-
   ##############################################
 
   #correlations
 
   tdwg_info <- st_drop_geometry(tdwg)
 
-  tri<-tdwg_info%>%
+  tri <- tdwg_info %>%
     dplyr::select(GEN_DUP,BIEN_OCCUR,mean_coverage_focal)
 
 
   library(corrplot)
-  corrplot()
-?corrplot
-
 
   data_for_cor<-
   tdwg_info %>%
@@ -558,14 +543,24 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
 
 
 
-  correlations <- cor(data_for_cor,method = "pearson")
-  colnames(correlations)<- c("General Traits","Georeferenced Traits",
-                             "Wood Traits","Flower Traits",
-                             "Seed Traits","Genes","Occurrences")
+  correlations <- cor(data_for_cor,
+                      method = "pearson")
 
-  rownames(correlations)<- c("General Traits","Georeferenced Traits",
-                             "Wood Traits","Flower Traits",
-                             "Seed Traits","Genes","Occurrences")
+  colnames(correlations)<- c("Focal Trait Completeness",
+                             "Georeferenced Trait Completeness",
+                             "Wood Trait Completeness",
+                             "Flower Trait Completeness",
+                             "Seed Trait Completeness",
+                             "Phylogenetic Completeness",
+                             "Distributional Completeness")
+
+  rownames(correlations)<- c("Focal Trait Completeness",
+                             "Georeferenced Trait Completeness",
+                             "Wood Trait Completeness",
+                             "Flower Trait Completeness",
+                             "Seed Trait Completeness",
+                             "Phylogenetic Completeness",
+                             "Distributional Completeness")
 
 
   correlation_pvals <- cor.mtest(data_for_cor,
