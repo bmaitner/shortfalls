@@ -20,6 +20,9 @@ traits$schema
 traits$metadata
 
 
+
+
+
 ########################################################
 
 # Trait completeness model: 1% threshold and broadly applicable traits
@@ -95,6 +98,7 @@ traits$metadata
 
 
   #rescale predictors
+
     general_traits_one_percent_threshold[4:ncol(general_traits_one_percent_threshold)] <- scale(general_traits_one_percent_threshold[4:ncol(general_traits_one_percent_threshold)])
     general_traits_one_percent_threshold <- na.omit(general_traits_one_percent_threshold)
 
@@ -165,43 +169,35 @@ traits$metadata
                  lw,
                  alternative = "greater")
 
-      # Moran I statistic standard deviate = 274.72, p-value < 2.2e-16
-      # alternative hypothesis: greater
-      # sample estimates:
-      #   Moran I statistic       Expectation          Variance
-      # 2.550459e-01     -4.940956e-05      8.622476e-07
 
-      moran_test_two_sided <- moran.test(tdwg_combined$completeness,
+      #check whether the autocorrelation is present in the residuals
+
+
+      moran_test_residuals <- moran.test(residuals(all_variables),
                                         lw,
                                         alternative = "two.sided")
 
 
-      MC_test_combined <- moran.mc(tdwg_combined$completeness,
+      # Moran I statistic standard deviate = 445.45, p-value < 2.2e-16
+      # alternative hypothesis: two.sided
+      # sample estimates:
+      #   Moran I statistic       Expectation          Variance
+      # 4.135883e-01     -4.940956e-05      8.622745e-07
+
+
+
+      MC_test_combined <- moran.mc(residuals(all_variables),
                     lw,
                     nsim = 999,
-                    alternative = "greater")
+                    alternative = "two.sided")
 
       # Monte-Carlo simulation of Moran I
       #
-      # data:  tdwg_combined$completeness
+      # data:  residuals(all_variables)
       # weights: lw
       # number of simulations + 1: 1000
       #
-      # statistic = 0.25505, observed rank = 1000, p-value = 0.001
-      # alternative hypothesis: greater
-
-      MC_test_combined_two_sided <- moran.mc(tdwg_combined$completeness,
-                                   lw,
-                                   nsim = 999,
-                                   alternative = "two.sided")
-
-      # Monte-Carlo simulation of Moran I
-      #
-      # data:  tdwg_combined$completeness
-      # weights: lw
-      # number of simulations + 1: 1000
-      #
-      # statistic = 0.25505, observed rank = 1000, p-value < 2.2e-16
+      # statistic = 0.41359, observed rank = 1000, p-value < 2.2e-16
       # alternative hypothesis: two.sided
 
 
@@ -210,14 +206,11 @@ traits$metadata
   MC_test_combined
   MC_test_combined_two_sided
 
-  ?moran.mc
-  plot(MC_test_combined)
-  plot(MC_test_combined_two_sided)
-
-  #check whether the autocorrelation is present in the residuals
+    plot(MC_test_combined)
 
     tdwg_dist <- st_distance(x = st_make_valid(tdwg_combined))
     sims <- simulateResiduals(all_variables)
+    testOutliers(simulationOutput = sims,type = "bootstrap")
     testSpatialAutocorrelation(simulationOutput = sims,
                                distMat = tdwg_dist)
 
@@ -262,6 +255,18 @@ library(tidyverse)
                    data = .,
                    family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
 
+
+  m_spamm_w_area <-
+    general_traits_w_coords %>%
+    mutate(species_w_data = completeness * richness_untf) %>%
+    mutate(species_wo_data = (1-completeness) * richness_untf) %>%
+    fitme(cbind(species_w_data,species_wo_data) ~ AREA_SQKM + GDP_SUM + GDP_CAPITA + ROAD_DENSITY + POP_COUNT + POP_DENSITY + SECURITY + RESEARCH_EXP + EDUCATION_EXP
+          + richness + mean_species_range + endemism +
+            (1|trait) + Matern(1 | X + Y) + (1|area),
+          data = .,
+          family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
+
+
   m_spamm_null <-
     general_traits_w_coords %>%
     mutate(species_w_data = completeness * richness_untf) %>%
@@ -275,6 +280,7 @@ library(tidyverse)
     spaMM::LRT(object = m_spamm,
                object2 = m_spamm_null) # p << 0.001
 
+    summary(m_spamm_w_area)
   #Look at model results
     summary(m_spamm)
 
@@ -294,6 +300,13 @@ library(tidyverse)
     # richness           -0.089006 0.014061  -6.3302
     # mean_species_range  0.399891 0.017347  23.0521
     # endemism           -0.128450 0.012497 -10.2784
+
+    sims <- simulateResiduals(fittedModel = m_spamm,integerResponse = TRUE,n = 1000)
+    ?simulateResiduals
+    plot(sims)
+    testOutliers(simulationOutput = sims,
+                 type = "bootstrap")
+
 
 
   #Check confidence intervals
@@ -340,7 +353,7 @@ library(tidyverse)
 
   plot(m_spamm) #documentation suggests this may be incorrect for binomials and recommends use of dharma package
 
-  #Partial Dependence Plots
+  # Partial Dependence Plots
     plot_effects(m_spamm,"mean_species_range")
     plot_effects(m_spamm,"AREA_SQKM")
 
@@ -407,27 +420,6 @@ library(tidyverse)
                n_greater = sum(sig_greater),
                n_lesser = sum(sig_lesser)) %>%
     arrange(-n_different,n_greater) -> trait_coverage_deviations
-
-
-
-
-#################################
-
-    # Alternatively, may be able to fit each separatemodels for each trait using e.g. lme4::lmList()
-      #this appears to be less powerful, since each model is fitted with little data.  I think its better to stick with random effects of trait
-
-    library(lme4)
-
-    lm_list_results <-
-    lme4::lmList(formula = completeness ~ AREA_SQKM + GDP_SUM + GDP_CAPITA +
-                                ROAD_DENSITY + POP_COUNT + POP_DENSITY +
-                                SECURITY + RESEARCH_EXP + EDUCATION_EXP +
-                                richness + mean_species_range + endemism |trait,
-                 family = "binomial",
-                 data = general_traits_one_percent_threshold)
-
-    summary(lm_list_results)
-
 
 
 #############################
@@ -540,6 +532,7 @@ library(tidyverse)
               data = .,
               family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
 
+
       geo_m_spamm_null <-
         geo_traits_w_coords %>%
         mutate(species_w_data = completeness * richness_untf) %>%
@@ -553,9 +546,11 @@ library(tidyverse)
       spaMM::LRT(object = geo_m_spamm,
                  object2 = geo_m_spamm_null) # p ~ 0
 
+      geo_sims <- simulateResiduals(fittedModel = geo_m_spamm,integerResponse = TRUE,n = 1000)
+      plot(geo_sims)
+
       #Look at model results
       summary(geo_m_spamm)
-
 
       #Check confidence intervals
         # confint(object = geo_m_spamm,
@@ -564,14 +559,6 @@ library(tidyverse)
         #                  "EDUCATION_EXP",
         #                  "richness","mean_species_range","endemism"))
         #
-
-        confint(object = geo_m_spamm,
-                parm = c("GDP_SUM","GDP_CAPITA","ROAD_DENSITY",
-                         "POP_COUNT","POP_DENSITY","SECURITY","RESEARCH_EXP",
-                         "EDUCATION_EXP",
-                         "richness","mean_species_range","endemism"))
-
-
 
 
 
@@ -586,9 +573,9 @@ library(tidyverse)
         #         boot_args = list(nb_cores=2, nsim=199, seed=123))
 
 
-      confint(object = geo_m_spamm,
-              parm = c("(Intercept)"),
-              boot_args = list(nb_cores=2, nsim=100, seed=123))
+      # confint(object = geo_m_spamm,
+      #         parm = c("(Intercept)"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
 
       # confint(object = geo_m_spamm,
       #         parm = c("AREA_SQKM"),
@@ -637,9 +624,6 @@ library(tidyverse)
       # confint(object = geo_m_spamm,
       #         parm = c("endemism"),
       #         boot_args = list(nb_cores=4, nsim=100, seed=123))
-
-
-
 
 
 
@@ -704,6 +688,8 @@ mean_completeness <-
 general_traits_one_percent_threshold %>%
   group_by(area)%>%
   summarise(mean_completeness = mean(completeness))
+
+unique(climate_data$changes_by_years$years)
 
 
 climate_data$changes_by_years%>%
@@ -913,10 +899,10 @@ cor.test(x = tdwg_w_human$mean_trait_completeness,
 
 
 #Load data products from Rudbeck
-  gen.data <- fread("manual_downloads/Darwinian_shortfalls/genbank_entries_w_duplicates_2022.csv", header = T, quote = "", sep = NULL) # As produced in the genbank_download.R script
+  gen.data <- data.table::fread("manual_downloads/Darwinian_shortfalls/genbank_entries_w_duplicates_2022.csv", header = T, quote = "", sep = NULL) # As produced in the genbank_download.R script
   #gen.data <- fread("manual_downloads/Darwinian_shortfalls/genbank_entries_2022.csv", header = T, quote = "", sep = NULL) # As produced in the genbank_download.R script
   load("manual_downloads/Darwinian_shortfalls/BIEN_in_WCSP_regions_sep2021.RData") # R workspace with objects "spec.list" and "res". Spec.list is a list of all L3 regions with the species recorded there in BIEN, translated to WCSP ID's. Res is a df with the lengths of the elements of spec.list.
-  name.id <- fread("data\\ID_and_Names_2022.csv", header = T) # As produced in the wcvp_subset_2021.R script
+  name.id <- data.table::fread("data\\ID_and_Names_2022.csv", header = T) # As produced in the wcvp_subset_2021.R script
   rm(fin)
 
 
@@ -1026,7 +1012,7 @@ data_availability%>%
 eu %>%
   plot(labels = c("Traits","Locations","Genes","Seed Plants"),
        quantities =TRUE,
-       fills=list(fill = c("#FF80F7", "#00D1D0","#CFB000",NA), alpha = 0.5))
+       fills=list(fill = c( "#FF80F7","#74ee15","#00D1D0",NA), alpha = 0.5))
 
 
 
@@ -1228,3 +1214,4 @@ corrplot( pred_correlations,
 # }
 
 
+############################
