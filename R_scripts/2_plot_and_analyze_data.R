@@ -963,44 +963,6 @@ cor.test(x = tdwg_w_human$mean_trait_completeness,
     dist_data_vec <- data_availability$taxon_name[which(data_availability$distribution_data==1)]
     genetic_data_vec <- data_availability$taxon_name[which(data_availability$genetic_data==1)]
 
-
-
-
-  library(VennDiagram)
-    #https://r-graph-gallery.com/14-venn-diagramm.html
-
-  vd<-
-  venn.diagram(x = list(trait_data_vec[1:10],dist_data_vec[1:10],genetic_data_vec[1:10]),
-               category.names = c("traits","distrbution","genes"),
-               filename = "#venn1.svg",
-               output=TRUE)
-
-
-  set1 <- paste(rep("word_" , 200) , sample(c(1:1000) , 200 , replace=F) , sep="")
-  set2 <- paste(rep("word_" , 200) , sample(c(1:1000) , 200 , replace=F) , sep="")
-  set3 <- paste(rep("word_" , 200) , sample(c(1:1000) , 200 , replace=F) , sep="")
-
-  set1 <- paste(trait_data_vec , sep="")
-  set2 <- paste(dist_data_vec , sep="")
-  set3 <- paste(genetic_data_vec , sep="")
-
-
-  # Diagramt
-  venn.diagram(
-    x = list(set1, set2, set3),
-    category.names = c("trait" , "dist" , "genetic"),
-    filename = '#venn_diagramm.png',
-    output=TRUE
-  )
-
-  venn.diagram(
-    x = list(set1, set2, set3),
-    category.names = c("trait" , "dist" , "genetic"),
-    filename = '#venn_diagramm.png',
-    output=TRUE
-  )
-
-
   #Euler
   library(eulerr)
 
@@ -1010,7 +972,7 @@ data_availability%>%
   euler()->eu
 
 eu %>%
-  plot(labels = c("Traits","Locations","Genes","Seed Plants"),
+  plot(labels = c("Trait","Distribution","Phylogeny","Seed Plants"),
        quantities =TRUE,
        fills=list(fill = c( "#FF80F7","#74ee15","#00D1D0",NA), alpha = 0.5))
 

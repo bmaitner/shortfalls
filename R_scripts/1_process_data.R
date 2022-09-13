@@ -401,15 +401,19 @@ ggplot(data = countries)+
 
 # Numbers for trait coverage
 
-  min(trait_coverage$completeness)
-  max(trait_coverage$completeness)
+  min(trait_coverage$completeness) # 0 pct completeness
+  max(trait_coverage$completeness) # 100 pct completeness
+  mean(trait_coverage$completeness) #18.8 %
+  median(trait_coverage$completeness) # 12.2 %
 
   mean_completeness_across_country_trait <-
   trait_coverage %>%
     group_by(trait) %>%
     summarise(mean_coverage = mean(completeness))
-  min(mean_completeness_across_country_trait$mean_coverage)*100
-  max(mean_completeness_across_country_trait$mean_coverage)*100
+  min(mean_completeness_across_country_trait$mean_coverage)*100 #5.872
+  max(mean_completeness_across_country_trait$mean_coverage)*100 # 69.806
+  mean(mean_completeness_across_country_trait$mean_coverage)*100 # 18.824
+  median(mean_completeness_across_country_trait$mean_coverage)*100 #15.277
 
 ##############################################################################
 

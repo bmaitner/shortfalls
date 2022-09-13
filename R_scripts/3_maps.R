@@ -28,21 +28,16 @@ library(expss)
                y = .,
                by = c("LEVEL_3_CO"="area"))
 
-tdwg %>% st_transform(crs = st_crs(6933))%>%
-ggplot()+
-  geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
-  scale_fill_viridis_b(name = "Mean \ncoverage \n(%)")+
-  theme_minimal()
 
-
-tdwg %>% st_transform(crs = st_crs(6933))%>%
-  ggplot()+
-  geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
-  scale_fill_gradient(low = "white",
-                      high = "magenta",
-                      name = "Mean \nCompleteness\n(%)",
-                      limits=c(0,100))+
-  theme_minimal()
+  tdwg %>%
+    st_transform(crs = st_crs(6933))%>%
+    ggplot()+
+    geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
+    scale_fill_gradient(low = "white",
+                        high = "magenta",
+                        name = "Mean Trait\nCompleteness\n(%)",
+                        limits=c(0,100))+
+    theme_minimal()
 
 #######################################################
 
@@ -74,16 +69,13 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
 
 
   tdwg %>%
-    mutate(TRAIT_COMPLETENESS_NO_FERNS = mean_coverage_focal_no_ferns*100)->tdwg
+    mutate(TRAIT_COMPLETENESS_NO_FERNS = mean_coverage_focal_no_ferns*100) -> tdwg
 
 
 #GEN_DUP,BIEN_OCCUR
 
   library(tricolore)
   tric <- Tricolore(tdwg, p1 = 'GEN_DUP', p2 = 'BIEN_OCCUR', p3 = 'mean_coverage_focal')
-
-
-  tric$key$data
 
   tdwg$rgb <- tric$rgb
   library(ggtern)
@@ -103,51 +95,6 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
       ymin = -7342230 , ymax = 300000
     )+theme_minimal()
 
-
-
-
-
-##########################
-
-# # two sets of choropleth maps
-#
-#
-# library(biscale)
-# library(cowplot)
-#
-#
-# bi_class<-  bi_class(.data = data.frame(x=1:100,y=100:1),x = x,y = y,
-#            style = "equal",
-#            dim = 4,
-#            keep_factors = TRUE,
-#            dig_lab = 2)
-#
-#
-# tdwg %>%
-#   ggplot() +
-#   geom_sf( mapping = aes(fill = bi_class), color = "black", size = 0.1, show.legend = FALSE) +
-#   bi_scale_fill(pal = "GrPink2", dim = 4) +
-#   labs(
-#     title = "Race and Income in St. Louis, MO",
-#     subtitle = "Gray Pink (GrPink) Palette"
-#   )+
-#   bi_theme()->test_map
-#
-#
-# legend <- bi_legend(pal = "GrPink2",
-#                     dim = 4,
-#                     xlab = "Traits",
-#                     ylab = "Occurrences",
-#                     size = 8)
-#
-# finalPlot <- ggdraw() +
-#   draw_plot(test_map, 0, 0, 1, 1) +
-#   draw_plot(legend, 0.2, .65, 0.2, 0.2)
-#
-# finalPlot
-# ?bi_class
-#
-#
 
 
 ##########################
@@ -246,15 +193,10 @@ library(ggpubr)
 
   # dist, phylo completeness + scatterplots with trait v phylo, trait vs dist.  (maybe colored by a ramp from one to the other?)
 
-  tdwg$TRAIT_COMPLETENESS_NO_FERNS
-
   tdwg %>%
     mutate(GENETIC_COMPLETENESS = GEN_DUP * 100,
            DISRIBUTIONAL_COMPLETENESS = BIEN_OCCUR *100)->tdwg
 
-  tdwg %>%
-    mutate(gen_v_trait = GENETIC_COMPLETENESS/TRAIT_COMPLETENESS_NO_FERNS,
-           dist_v_trait = DISRIBUTIONAL_COMPLETENESS / TRAIT_COMPLETENESS_NO_FERNS)->tdwg
 
   library(ggpmisc)
 
@@ -318,6 +260,30 @@ library(ggpubr)
             widths = c(2,1),
             labels = "AUTO")
 
+  # Distrbutional data
+    max(tdwg$DISRIBUTIONAL_COMPLETENESS) #100%
+    min(tdwg$DISRIBUTIONAL_COMPLETENESS) #0%
+    mean(tdwg$DISRIBUTIONAL_COMPLETENESS) #47.12%
+    median(tdwg$DISRIBUTIONAL_COMPLETENESS) #51.65%
+
+
+  # Phylogenetic data
+    max(tdwg$GENETIC_COMPLETENESS) #11.28%
+    min(tdwg$GENETIC_COMPLETENESS) #1.34%
+    mean(tdwg$GENETIC_COMPLETENESS) #5.67%
+    median(tdwg$GENETIC_COMPLETENESS) #5.49%
+
+  #Where do we have more trait than distributional data?
+
+    tdwg %>%
+      mutate(dist_v_trait = DISRIBUTIONAL_COMPLETENESS - TRAIT_COMPLETENESS_NO_FERNS)%>%
+      ggplot(mapping = aes(fill = dist_v_trait))+
+      geom_sf()+
+      scale_fill_gradient2(low = "magenta",mid="white",high = "#74ee15") #looks like Russia and parts of northern africa may be trait biased
+
+    tdwg %>%
+      mutate(dist_v_trait = DISRIBUTIONAL_COMPLETENESS - TRAIT_COMPLETENESS_NO_FERNS)%>%
+      st_drop_geometry()->tdwg_info
 
 
 ###########################
@@ -340,28 +306,43 @@ library(ggpubr)
                by = c("LEVEL_3_CO"="area"))
 
 
-  tdwg %>% st_transform(crs = st_crs(6933))%>%
-    ggplot()+
-    geom_sf(mapping = aes(fill = mean_geo_coverage*100))+
-    scale_fill_viridis_b(name = "Mean \ngeoreferenced\ncoverage \n(%)")+
-    theme_minimal()
-
+  georef_plot <-
   tdwg %>% st_transform(crs = st_crs(6933))%>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_geo_coverage*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
-                        name = "Mean \ngeoreferenced\ncoverage \n(%)",
-                        limits=c(0,100))+
+                        name = "Mean \nGeoreferenced\nTrait\nCompleteness \n(%)")+
     theme_minimal()
 
-  tdwg %>% st_transform(crs = st_crs(6933))%>%
-    ggplot()+
-    geom_sf(mapping = aes(fill = mean_geo_coverage*100))+
-    scale_fill_gradient(low = "white",
-                        high = "magenta",
-                        name = "Mean \ngeoreferenced\ncoverage \n(%)")+
-    theme_minimal()
+
+  geo_v_overall <-
+    ggplot(data = tdwg,
+           mapping = aes(x= mean_coverage_focal*100,
+                                     y = mean_geo_coverage*100
+    ))+
+    # ,color = DISRIBUTIONAL_COMPLETENESS -TRAIT_COMPLETENESS_NO_FERNS))+
+
+    geom_point()+
+    geom_abline(slope = 1,intercept = 0,lty=2)+
+    xlab("Focal Trait Completeness (%)")+
+    ylab("Georeferenced Trait Completeness (%)")+
+    stat_correlation(method = "pearson",aes(label = paste(after_stat(r.label),
+                                                          after_stat(p.value.label),
+                                                          after_stat(n.label),
+                                                          sep = "*\"; \"*")),
+                     small.p = TRUE,
+                     small.r = TRUE)
+
+  #combine map and plot
+
+  ggarrange(georef_plot, geo_v_overall,
+            ncol = 2,
+            widths = c(2,1),
+            labels = "AUTO")
+
+
+
 
   # merge with predictor variables
   socio_vars <- read.csv("manual_downloads/Darwinian_shortfalls/socioeco_var.csv")
@@ -588,28 +569,4 @@ tdwg %>% st_transform(crs = st_crs(6933))%>%
             p.mat = correlation_pvals$p)
 
 #####################################################################
-
-
-
-library(sf)
-
-
-  hist(preds$mean_diff_from_pred)
-
-plot(preds$exp_mean_completeness,
-     preds$mean_completeness)
-
-
-    preds %>%
-      st_transform(crs = st_crs(6933))%>%
-      ggplot()+
-      geom_sf(mapping = aes(fill = (mean_completeness - exp_mean_completeness)*100))+
-      scale_fill_gradient(low = "white",
-                          high = "magenta",
-                          name = "Mean \ncoverage\n(%)")+
-      theme_minimal()+ggtitle("Expect % - Obs. %")
-
-
-
-
 

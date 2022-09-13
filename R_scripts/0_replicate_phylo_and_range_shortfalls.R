@@ -309,7 +309,9 @@ for (i7 in area.vector){
 for (i in area.vector){
   wcsp.acc.name <- name.id$taxon_name[match(spec.df[,i], name.id$plant_name_id)]
   wcsp.total <- wcsp.data[,i]
-  result.list.bien[[i]] <- length(intersect(wcsp.acc.name, wcsp.total))/length(wcsp.total[!is.na(wcsp.total)])
+  #result.list.bien[[i]] <- length(intersect(wcsp.acc.name, wcsp.total))/length(wcsp.total[!is.na(wcsp.total)])#version from Rudbeck et al.
+  result.list.bien[[i]] <- length(na.omit(intersect(wcsp.acc.name, wcsp.total)))/length(wcsp.total[!is.na(wcsp.total)]) #corrected version
+
 }
 
 
