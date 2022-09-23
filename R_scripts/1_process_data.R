@@ -307,10 +307,12 @@ n_species <- length(unique(wcvp$taxon_name))
         trait_summary %>%
         filter(TraitName %in% traits_for_main_analysis$TraitName)
 
+      # saveRDS(object = trait_summary,file = "data/trait_summary_overall.RDS")
       # saveRDS(object = trait_summary_for_main_analysis,file = "data/trait_summary_for_main_analysis.RDS")
       # saveRDS(object = trait_list,file = "data/trait_list_w_coverage.RDS")
 
-      #trait_summary_for_main_analysis<-  readRDS("data/trait_summary_for_main_analysis.RDS")
+      trait_summary_for_main_analysis<-  readRDS("data/trait_summary_for_main_analysis.RDS")
+      trait_list_w_coverage <- readRDS("data/trait_list_w_coverage.RDS")
 
 
 ###########################################################
@@ -414,6 +416,24 @@ ggplot(data = countries)+
   max(mean_completeness_across_country_trait$mean_coverage)*100 # 69.806
   mean(mean_completeness_across_country_trait$mean_coverage)*100 # 18.824
   median(mean_completeness_across_country_trait$mean_coverage)*100 #15.277
+
+##############################################################################
+
+#Trait coverage across all traits
+
+  # source("R/get_trait_coverage.R")
+  # wcvp <-readRDS(file = "manual_downloads/WCVP/wcvp_cleaned.RDS")
+  # trait_summary <- readRDS(file = "data/trait_summary_overall.RDS")
+  #
+  # total_trait_coverage <-
+  # get_trait_coverage(wcvp = wcvp,
+  #                    trait_summary = trait_summary)
+  #
+
+  #saveRDS(object = total_trait_coverage,file = "data/total_trait_coverage.RDS")
+  total_trait_coverage <- readRDS("data/total_trait_coverage.RDS")
+
+
 
 ##############################################################################
 

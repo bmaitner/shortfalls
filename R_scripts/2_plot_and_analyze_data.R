@@ -1142,7 +1142,75 @@ corrplot( pred_correlations,
 
 
 
+# Does trait coverage of all traits show the same pattern, or just the focal traits?
 
+#Note that these coverage estimates are wrong since they compare all traits to the full set of species
+#so, e.g. bark trait completeness doesn't accound for whether the species have bark
+
+  total_trait_coverage <- readRDS("data/total_trait_coverage.RDS")
+
+  total_coverage_wide <-
+  total_trait_coverage %>%
+    pivot_wider(names_from = trait,
+                values_from = completeness)
+
+
+
+  general_traits_one_percent_threshold <- read_rds("data/focal_trait_coverage.rds")
+
+  general_traits_one_percent_threshold %>%
+    group_by(area)%>%
+    summarise(mean_completeness_focal = mean(completeness))%>%
+    inner_join(total_coverage_wide)%>%
+    select(-area)%>%
+    cor() -> correlations
+
+  cor_focal <- correlations[,"mean_completeness_focal",drop=FALSE]%>%
+    as.data.frame()%>%
+    rownames_to_column(var = "TraitName")
+
+
+  hist(cor_focal$mean_completeness_focal, breaks = 100)
+
+  cor_focal %>%
+    filter(mean_completeness_focal < 0) #370 traits with correlations less than zero
+
+
+  trait_summary <- readRDS(file = "data/trait_summary_overall.RDS")
+
+
+  species_per_trait <-
+  trait_summary %>%
+    group_by(TraitName)%>%
+    summarise(n_species = n())
+
+  cor_focal %>%
+    inner_join(y = species_per_trait) -> cor_focal
+
+
+  cor_focal %>%
+    mutate(focal_trait = if_else(condition = TraitName %in% general_traits_one_percent_threshold$trait,
+                                 true = "Yes",false = "No")) -> cor_focal
+
+
+  cor_focal %>%
+  ggplot(mapping = aes(x = n_species,
+                       y = mean_completeness_focal,
+                       color = focal_trait))+
+    geom_point()+
+    scale_x_log10(labels = scales::label_number())+
+    geom_hline(yintercept = 0,lty=2)+
+    xlab("Number of species with data")+
+    ylab("Correlation with mean focal trait completeness")+
+    labs(color = "Focal trait")
+
+
+  # what fraction of traits show positive correlations with out mean trait coverage?
+
+    length(which(cor_focal$mean_completeness_focal<0))/nrow(cor_focal)
+    length(which(cor_focal$mean_completeness_focal>0))/nrow(cor_focal)
+
+######################################
 
 # get_citations <- function(directory, out_file = NULL){
 #
@@ -1178,3 +1246,11 @@ corrplot( pred_correlations,
 
 
 ############################
+
+
+
+
+
+
+
+
