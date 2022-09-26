@@ -1,4 +1,5 @@
-#Code taken from https://github.com/pebgroup/Distribution_of_phylogenetic_data/blob/master/03_phylo_know_analysis_2022.R and variable locations changed
+# Code taken from https://github.com/pebgroup/Distribution_of_phylogenetic_data/blob/master/03_phylo_know_analysis_2022.R and variable locations changed
+# Note also that use the WCVP as opposed to the WCSP which was used in Rudbeck et al 2022.  However, the format is the same and so the code is largely unchanged.
 
 library(data.table)
 library(rgdal)
