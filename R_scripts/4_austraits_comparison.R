@@ -88,6 +88,10 @@
   austraits <- bind_rows(good_names,
                          bad_names)
 
+  austraits %>%
+    group_by(AccSpeciesName,TraitName)%>%
+    summarise(n = sum(n))->austraits
+
   rm(austry,bad_names,good_names,tnrsed_bad)
 
 
@@ -97,12 +101,9 @@
   length(unique(trait_summary_for_main_analysis$AccSpeciesName))#9,722 species in TRY
   length(unique(trait_summary_for_main_analysis$TraitName)) #55
 
-  nrow(austraits) # 171,219
-  length(unique(austraits$AccSpeciesName)) #20,499
+  nrow(austraits) # 158,508
+  length(unique(austraits$AccSpeciesName)) #20,498
   length(unique(austraits$TraitName)) #35
-
-
-
 
 
 # Get coverage with AusTraits
@@ -113,16 +114,19 @@
     group_by(AccSpeciesName,TraitName) %>%
     summarise(n = sum(n)) -> all_data
 
-    nrow(all_data) #200891
+    nrow(all_data) #200899
     length(unique(all_data$AccSpeciesName))
     length(unique(all_data$TraitName))
 
     trait_coverage_w_austraits <-
       get_trait_coverage(wcvp = wcvp,
                          trait_summary = all_data)
+#
+#     saveRDS(object = trait_coverage_w_austraits,
+#             file = "data/focal_trait_coverage_australia_w_austraits.rds")
 
-    saveRDS(object = trait_coverage_w_austraits,
-            file = "data/focal_trait_coverage_australia_w_austraits.rds")
+    trait_coverage_w_austraits <- readRDS("data/focal_trait_coverage_australia_w_austraits.rds")
+
 
     length(unique(all_data$AccSpeciesName))/length(unique(wcvp$taxon_name)) #99.5% of species are represented
 
@@ -157,7 +161,7 @@
 
 
 plot_try <-
-  tdwg_general %>%
+  tdwg_try %>%
     st_transform(crs = st_crs(6933))%>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
@@ -197,7 +201,10 @@ plot_austry <-
 ggarrange(plot_try,
           plot_austry,
           ncol = 2,
-          common.legend = TRUE)
+          common.legend = TRUE)-> austry_plot
+
+ggsave(plot = austry_plot,
+       filename = "plots/austraits_plus_try.jpg",width = 10,height = 4.5, bg = "white")
 
 
 

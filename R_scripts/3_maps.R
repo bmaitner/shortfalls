@@ -37,7 +37,11 @@ library(expss)
                         high = "magenta",
                         name = "Mean Trait\nCompleteness\n(%)",
                         limits=c(0,100))+
-    theme_minimal()
+    theme_minimal()-> overall_trait_completeness
+
+ggsave(filename = "plots/focal_completeness.svg",width = 10,height = 10)
+ggsave(filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "white")
+
 
 #######################################################
 
