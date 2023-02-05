@@ -184,11 +184,31 @@ n_species <- length(unique(wcvp$taxon_name))
       hist(log10(trait_list$n), breaks = 100, xlab = "log10(n species with data)", main = "")
 
     # Count the number of observations per species x trait
+
+      #this bit of code makes the first pass at the estimating the number of species per trait
+
       traits %>%
         filter(!is.na(TraitID))%>%
-        group_by(AccSpeciesName, TraitName) %>%
+        group_by(AccSpeciesName, TraitName, TraitID) %>%
         count() %>%
-        collect() -> trait_summary #1 636 705
+        collect() -> trait_summary #1 636 710
+
+      # this bit of code "corrects" erroneous TraitIDs if multiple exist for the same trait name.  It simply assumes the more common TraitID is correct
+
+      trait_summary %>%
+        group_by(TraitName,TraitID) %>%
+        summarise(total_n = sum(n)) %>%
+        mutate(max_n = max(total_n)) %>%
+        filter(total_n == max_n) %>%
+        select(TraitName,TraitID) %>%
+        inner_join(trait_summary %>%
+                     rename(raw_TraitID = TraitID)) %>%
+        group_by(TraitName,TraitID,AccSpeciesName)%>%
+        summarize(n = sum(n)) -> trait_summary
+
+      trait_summary %>%
+        select(TraitName,TraitID)%>%
+        unique() -> tID_lookup
 
       #correct or toss names that cannot be matched
 
@@ -310,9 +330,21 @@ n_species <- length(unique(wcvp$taxon_name))
       # saveRDS(object = trait_summary,file = "data/trait_summary_overall.RDS")
       # saveRDS(object = trait_summary_for_main_analysis,file = "data/trait_summary_for_main_analysis.RDS")
       # saveRDS(object = trait_list,file = "data/trait_list_w_coverage.RDS")
+      # saveRDS(object = tID_lookup,file = "data/tID_lookup.RDS")
 
-      trait_summary_for_main_analysis<-  readRDS("data/trait_summary_for_main_analysis.RDS")
+      trait_summary_for_main_analysis <-  readRDS("data/trait_summary_for_main_analysis.RDS")
       trait_list_w_coverage <- readRDS("data/trait_list_w_coverage.RDS")
+
+      # Per reviewer 2's suggestion, create a table containing traits and coverage for the 55 focal traits
+
+        trait_summary_for_main_analysis %>%
+          group_by(TraitName) %>%
+          summarise(species_with_data = n()) %>%
+          inner_join(y = tID_lookup ) %>%
+          arrange(-species_with_data) -> focal_trait_coverage
+
+        # write.csv(x = focal_trait_coverage,
+        #           file = "tables/focal_trait_coverage.csv",row.names = FALSE)
 
 
 ###########################################################

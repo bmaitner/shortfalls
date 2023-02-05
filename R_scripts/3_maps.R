@@ -7,6 +7,10 @@ library(lme4)
 library(sf)
 library(tricolore)
 library(expss)
+library(lwgeom)
+library("ggplot2")
+library(sf)
+library(cowplot)
 
 ###########################################################
 
@@ -18,7 +22,7 @@ library(expss)
   general_traits_one_percent_threshold <- read_rds("data/focal_trait_coverage.rds")
 
 ###########################################################
-# Mean coverage map
+# Mean coverage map (unfortunately, the editors specified a projection that causes problems in everything)
 
   tdwg <-
   general_traits_one_percent_threshold %>%
@@ -29,15 +33,38 @@ library(expss)
                by = c("LEVEL_3_CO"="area"))
 
 
-  tdwg %>%
-    st_transform(crs = st_crs(6933))%>%
-    ggplot()+
+  crs_wintri <- "+proj=wintri +datum=WGS84 +no_defs +over"
+  world_wintri <- st_transform_proj(tdwg, crs = crs_wintri)
+
+  grat_wintri <-
+    st_graticule(lat = c(-89.9, seq(-80, 80, 20), 89.9)) %>%
+    st_transform_proj(crs = crs_wintri)
+
+
+  ggplot(world_wintri) +
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Mean Trait\nCompleteness\n(%)",
                         limits=c(0,100))+
-    theme_minimal()-> overall_trait_completeness
+    #geom_sf(size = 0.5/.pt) +
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()-> overall_trait_completeness
+
+
+
+  # #############
+  #
+  # tdwg %>%
+  #   st_transform(crs = st_crs(6933))%>%
+  #   ggplot()+
+  #   geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
+  #   scale_fill_gradient(low = "white",
+  #                       high = "magenta",
+  #                       name = "Mean Trait\nCompleteness\n(%)",
+  #                       limits=c(0,100))+
+  #   theme_minimal()-> overall_trait_completeness
 
 ggsave(filename = "plots/focal_completeness.svg",width = 10,height = 10)
 ggsave(filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "white")
@@ -103,78 +130,125 @@ ggsave(filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "
 
 ##########################
 
-  # 3 shortfalls 0 to 100
 
-trait_completeness <-
   tdwg %>%
-    st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(rs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Trait \nCompleteness\n(%)",
                         limits=c(0,100))+
-    theme_minimal()
+    theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
+
+
+
+
+  # 3 shortfalls 0 to 100
+
+trait_completeness <-
+  tdwg %>%
+    #st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(crs = crs_wintri) %>%
+    ggplot()+
+    geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
+    scale_fill_gradient(low = "white",
+                        high = "magenta",
+                        name = "Trait \nCompleteness\n(%)",
+                        limits=c(0,100))+
+    #theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
 
 
   dist_completeness <-
     tdwg %>%
-    st_transform(crs = st_crs(6933)) %>%
+    #st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = BIEN_OCCUR*100))+
     scale_fill_gradient(low = "white",
                         high = "#74ee15",
                         name = "Distributional \nCompleteness\n(%)",
                         limits=c(0,100))+
-    theme_minimal()
+    #theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
 
 
 
   phylo_completeness <-
     tdwg %>%
-    st_transform(crs = st_crs(6933)) %>%
+    #st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = GEN_DUP * 100))+
     scale_fill_gradient(low = "white",
                         high = "#00D1D0",
                         name = "Phylogenetic \nCompleteness\n(%)",
                         limits=c(0,100))+
-    theme_minimal()
+    #theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
 
 # 3 shortfalls free
 
   trait_completeness_free <-
     tdwg %>%
-    st_transform(crs = st_crs(6933)) %>%
+    #st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Trait \nCompleteness\n(%)")+
-    theme_minimal()
+    #theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
 
 
   dist_completeness_free <-
     tdwg %>%
-    st_transform(crs = st_crs(6933)) %>%
+    #st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = BIEN_OCCUR*100))+
     scale_fill_gradient(low = "white",
                         high = "#74ee15",
                         name = "Distributional \nCompleteness\n(%)")+
-    theme_minimal()
+    #theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
 
 
 
   phylo_completeness_free <-
     tdwg %>%
-    st_transform(crs = st_crs(6933)) %>%
+    #st_transform(crs = st_crs(6933)) %>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = GEN_DUP * 100))+
     scale_fill_gradient(low = "white",
                         high = "#00D1D0",
                         name = "Phylogenetic \nCompleteness\n(%)")+
-    theme_minimal()
+    #theme_minimal()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
 
 
 library(ggpubr)
@@ -257,12 +331,18 @@ library(ggpubr)
 
   library(ggplot2)
 
+  phylo_and_dist <-
   ggarrange(phylo_completeness_free,trait_v_gene,
             dist_completeness_free,trait_v_dist,
             ncol = 2,
             nrow = 2,
             widths = c(2,1),
             labels = "AUTO")
+  ggsave(filename = "plots/phylo_and_dist_completeness.svg",width = 10,height = 4.5)
+  ggsave(filename = "plots/phylo_and_dist_completeness_tall.svg",width = 10,height = 4.5)
+  ggsave(filename = "plots/phylo_and_dist_completeness.jpg",width = 10,height = 4.5, bg = "white")
+  ggsave(filename = "plots/phylo_and_dist_completeness_tall.jpg",width = 10,height = 10, bg = "white")
+  ggsave(filename = "plots/phylo_and_dist_completeness_med.jpg",width = 10,height = 7, bg = "white")
 
   # Distrbutional data
     max(tdwg$DISRIBUTIONAL_COMPLETENESS) #100%
