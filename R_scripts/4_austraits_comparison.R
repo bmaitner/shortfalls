@@ -3,6 +3,10 @@
 
 # Load packages
 
+  remotes::install_github("traitecoevo/austraits",
+                          dependencies = TRUE,
+                          upgrade = "ask",
+                          build_vignettes = TRUE)
   library(sf)
   library(tidyverse)
   library(austraits)
@@ -22,7 +26,8 @@
 # Filter tdwg to only Australia
 
   tdwg %>%
-    dplyr::filter(REGION_NAM == "Australia") -> tdwg
+    dplyr::filter(REGION_NAM == "Australia")%>%
+    dplyr::filter(!grepl(pattern = "Is.",x = LEVEL_NAME))-> tdwg
 
 # Filter WCVP to Australia
 
@@ -158,40 +163,65 @@
                y = .,
                by = c("LEVEL_3_CO"="area"))
 
+  #crs_wintri <- "+proj=wintri +datum=WGS84 +no_defs +over"
+  crs_wintri <- "+proj=wintri +datum=WGS84 +no_defs +over +proj=laea +lon_0=133.59375 +lat_0=-26.0513517 +datum=WGS84 +units=m +no_defs"
+
+
+  grat_wintri <-
+    st_graticule(lat = c(-89.9, seq(-80, 80, 20), 89.9)) %>%
+    st_transform_proj(crs = crs_wintri)
+
 
 
 plot_try <-
   tdwg_try %>%
-    st_transform(crs = st_crs(6933))%>%
+    #st_transform(crs = st_crs(6933))%>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Mean \nCompleteness\n(%)",
                         limits=c(0,30))+
-    theme_minimal()+
-  xlim(11000000,15000000)+
+    #theme_minimal()+
+  coord_sf(datum = NULL) +
+  theme_map()+
+  xlim(-2060834,1980902)+
+    ylim(-2007507,1739014)+
   geom_sf_text(mapping = aes(label = round(mean_coverage_focal*100,
                                            digits = 1)))+
-  xlab(NULL)+ylab(NULL)+
-  ggtitle("TRY")
+  xlab(NULL)+
+    ylab(NULL)+
+  ggtitle("TRY")+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+    coord_sf(datum = NULL) +
+    theme_map()
+
 
 
 plot_austry <-
   tdwg_austry %>%
-    st_transform(crs = st_crs(6933))%>%
+    #st_transform(crs = st_crs(6933))%>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Mean \nCompleteness\n(%)",
                         limits=c(0,30))+
-    xlim(11000000,15000000)+
-    theme_minimal()+
+    #xlim(11000000,15000000)+
+    #theme_minimal()+
+    coord_sf(datum = NULL) +
+    theme_map()+
+    xlim(-2060834,1980902)+
+    ylim(-2007507,1739014)+
     geom_sf_text(mapping = aes(label = round(mean_coverage_focal*100,
-                                             digits = 1)),inherit.aes = TRUE)+
-  xlab(NULL)+ylab(NULL)+
-  ggtitle("TRY + AusTraits")
+                                               digits = 1)),inherit.aes = TRUE)+
+    xlab(NULL)+ylab(NULL)+
+  ggtitle("TRY + AusTraits")+
+  geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
+  coord_sf(datum = NULL) +
+  theme_map()
 
 
 
