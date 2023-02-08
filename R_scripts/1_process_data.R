@@ -215,19 +215,49 @@ n_species <- length(unique(wcvp$taxon_name))
       trait_summary[which(trait_summary$AccSpeciesName %in% wcvp$taxon_name),] -> good_names
       trait_summary[which(!trait_summary$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names
 
+      (nrow(good_names)+nrow(bad_names))==nrow(trait_summary)
+
+        #how many names could be matched exactly?
+          length(unique(trait_summary$AccSpeciesName))
+          length(unique(good_names$AccSpeciesName))
+
+          length(unique(good_names$AccSpeciesName))/
+            length(unique(trait_summary$AccSpeciesName)) #68% of names match the wcvp exactly
+
+          length(unique(bad_names$AccSpeciesName))/
+            length(unique(trait_summary$AccSpeciesName)) #32% of names aren't matched
+            #54,767 bad names
+
       merge(x = bad_names,
             y = tnrsed_trait_sp_names,
             by.x = "AccSpeciesName",
             by.y = "Name_submitted",
             all.x = TRUE,
-            all.y = FALSE) %>%
-        filter(Accepted_name_rank == "species") %>% #toss names that couldn't be matched to species
+            all.y = FALSE) -> bad_names
+
+        #how many bad names can be matched to a species?
+          length(unique(bad_names$AccSpeciesName[which(bad_names$Accepted_name_rank != "species")]))#25391
+
+          length(unique(bad_names$AccSpeciesName[which(bad_names$Accepted_species == "")]))/
+          length(unique(bad_names$AccSpeciesName)) #32% aren't matched to species
+
+        bad_names %>%
+        #filter(Accepted_name_rank == "species") %>% #toss names that couldn't be matched to species
+        filter(Accepted_species != "") %>% #toss names that couldn't be matched to species
         select(AccSpeciesName, TraitName, n, Accepted_species) %>%
         mutate(AccSpeciesName = Accepted_species) %>%
         select(-Accepted_species) -> bad_names
 
+
+
       #Only keep TNRSed names that match to our list of accepted taxa
+      bad_names[which(!bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names_to_toss
       bad_names[which(bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names
+
+      length(unique(bad_names$AccSpeciesName)) #24702
+      length(unique(bad_names_to_toss$AccSpeciesName))#2281 #largely hybrids
+      24702/54767
+
 
       #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
       rbind(good_names, bad_names) %>%
@@ -235,8 +265,13 @@ n_species <- length(unique(wcvp$taxon_name))
         summarize(n = sum(n)) -> trait_summary # 1 446 171
 
       #get counts of # of traits, # of species
-        length(unique(trait_summary$AccSpeciesName)) #128 929
-        length(unique(trait_summary$TraitName)) #1913
+        length(unique(trait_summary$AccSpeciesName)) #129 161
+        length(unique(trait_summary$TraitName)) #1918
+
+      trait_summary %>%
+        select(-n)%>%
+        unique()%>%
+        nrow() #1 457 057
 
 
 ##########################################################
@@ -1261,7 +1296,7 @@ traits %>%
     oz_traits <- aus$traits
     oz_trait_defs <- aus$definitions$traits
 
-
+###############################
 
 
 
