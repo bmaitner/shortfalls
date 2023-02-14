@@ -519,6 +519,24 @@ library(tidyverse)
               all.x = TRUE) ->
         geo_traits_w_coords
 
+    #Generate a list of island vs mainland polygons
+
+
+      shape_sf <- st_read("manual_downloads/Darwinian_shortfalls/level3.shp")
+
+      intersects <- st_intersects(shape_sf)
+      intmat <- as.matrix(intersects)
+      shape_sf$is_island <- 0
+      shape_sf$is_island[which(rowSums(intmat)<=1)]<-1
+
+
+        shape_sf %>%
+          select(area = LEVEL_3_CO, is_island)%>%
+          st_drop_geometry() %>%
+          inner_join(geo_traits_w_coords) -> geo_traits_w_coords
+
+        stop("Brian work on this bit. need to add ")
+
       #trying spamm
       library(spaMM)
 
@@ -647,6 +665,128 @@ library(tidyverse)
       # -8.221943         -8.221941
       # lower AREA_SQKM upper AREA_SQKM
       # 0.902815        0.902817
+
+  #################################
+
+      #Geo data omitting islands
+
+      geo_m_spamm_no_islands <-
+        geo_traits_w_coords %>%
+        filter(is_island == 0) %>%
+        mutate(species_w_data = completeness * richness_untf) %>%
+        mutate(species_wo_data = (1-completeness) * richness_untf) %>%
+        fitme(cbind(species_w_data,species_wo_data) ~ AREA_SQKM + GDP_SUM + GDP_CAPITA + ROAD_DENSITY + POP_COUNT + POP_DENSITY + SECURITY + RESEARCH_EXP + EDUCATION_EXP
+              + richness + mean_species_range + endemism +
+                (1|trait) + Matern(1 | X + Y),
+              data = .,
+              family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
+
+
+      geo_m_spamm_null_no_islands <-
+        geo_traits_w_coords %>%
+        filter(is_island == 0) %>%
+        mutate(species_w_data = completeness * richness_untf) %>%
+        mutate(species_wo_data = (1-completeness) * richness_untf) %>%
+        fitme(cbind(species_w_data,species_wo_data) ~  (1|trait) + Matern(1 | X + Y),
+              data = .,
+              family = "binomial") # for spamm, binomial models need to include successes and failures (e.g. samples and no samples)
+
+
+      #Test whether model is significant improvement over null
+      spaMM::LRT(object = geo_m_spamm_no_islands,
+                 object2 = geo_m_spamm_null_no_islands) # p ~ 0
+
+      # ------------ Fixed effects (beta) ------------
+      #   Estimate Cond. SE   t-value
+      # (Intercept)        -7.29017   0.2354 -30.96531
+      # AREA_SQKM           0.79138   0.2531   3.12614
+      # GDP_SUM             0.52173   0.2466   2.11553
+      # GDP_CAPITA         -0.83286   0.4039  -2.06226
+      # ROAD_DENSITY        0.03441   0.5469   0.06291
+      # POP_COUNT          -0.08070   0.1693  -0.47664
+      # POP_DENSITY        -0.22415   0.4507  -0.49731
+      # SECURITY           -0.44147   0.2799  -1.57717
+      # RESEARCH_EXP        1.93047   0.2938   6.57026
+      # EDUCATION_EXP       0.09629   0.2096   0.45944
+      # richness            0.53163   0.2360   2.25302
+      # mean_species_range  0.02315   0.2339   0.09897
+      # endemism            0.03499   0.3186   0.10981
+
+      # confint(object = geo_m_spamm_no_islands,
+      #         parm = c("(Intercept)"),
+      #         boot_args = list(nb_cores=2, nsim=100, seed=123))
+
+      # Intervals :
+      #   Level      Normal              Basic              Percentile
+      # 95%   (-7.498, -7.356 )   (-7.500, -7.352 )   (-7.228, -7.080 )
+
+      # confint(object = geo_m_spamm_no_islands,
+      #         parm = c("AREA_SQKM"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      # Intervals :
+      #   Level      Normal              Basic              Percentile
+      # 95%   ( 0.8168,  0.9213 )   ( 0.8174,  0.9189 )   ( 0.6638,  0.7653 )
+
+      # confint(object = geo_m_spamm_no_islands,
+      #         parm = c("GDP_SUM"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
+      #
+      # Intervals :
+      #   Level      Normal              Basic              Percentile
+      # 95%   ( 0.4911,  0.5592 )   ( 0.4932,  0.5641 )   ( 0.4794,  0.5503 )
+#
+#       confint(object = geo_m_spamm_no_islands,
+#               parm = c("GDP_CAPITA"),
+#               boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      # Intervals :
+      #   Level      Normal              Basic              Percentile
+      # 95%   (-0.9833, -0.7833 )   (-1.0008, -0.7961 )   (-0.8696, -0.6649 )
+
+      # confint(object = geo_m_spamm_no_islands,
+      #         parm = c("ROAD_DENSITY"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      # Intervals :
+      #   Level      Normal              Basic              Percentile
+      # 95%   (-0.1258,  0.1551 )   (-0.1182,  0.1540 )   (-0.0851,  0.1870 )
+
+      # confint(object = geo_m_spamm_no_islands,
+      #         parm = c("POP_COUNT"),
+      #         boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      # Intervals :
+      #   Level      Normal              Basic              Percentile
+      # 95%   (-0.1216, -0.0637 )   (-0.1192, -0.0623 )   (-0.0991, -0.0422 )
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("POP_DENSITY"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("SECURITY"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("RESEARCH_EXP"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("EDUCATION_EXP"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("richness"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("mean_species_range"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
+
+      confint(object = geo_m_spamm_no_islands,
+              parm = c("endemism"),
+              boot_args = list(nb_cores=4, nsim=100, seed=123))
 
 
 ##############################

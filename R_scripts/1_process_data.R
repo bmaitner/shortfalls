@@ -248,30 +248,38 @@ n_species <- length(unique(wcvp$taxon_name))
         mutate(AccSpeciesName = Accepted_species) %>%
         select(-Accepted_species) -> bad_names
 
+        #Fix hybrid notation issue
+          # wcvp uses "×" for hybrids
+          # TNRS uses "x"
+        bad_names$AccSpeciesName <- gsub(pattern = " x ",
+                                         replacement = " × ",
+                                         x = bad_names$AccSpeciesName)
+
 
 
       #Only keep TNRSed names that match to our list of accepted taxa
       bad_names[which(!bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names_to_toss
       bad_names[which(bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names
 
-      length(unique(bad_names$AccSpeciesName)) #24702
-      length(unique(bad_names_to_toss$AccSpeciesName))#2281 #largely hybrids
-      24702/54767
+      length(unique(bad_names$AccSpeciesName)) #25881
+      length(unique(bad_names_to_toss$AccSpeciesName))#1102 #largely hybrids
+
+      #25881/54767 = 47% of non-matching names could be rescued by the TNRS
 
 
       #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
       rbind(good_names, bad_names) %>%
         group_by(AccSpeciesName, TraitName) %>%
-        summarize(n = sum(n)) -> trait_summary # 1 446 171
+        summarize(n = sum(n)) -> trait_summary # 1 463 531
 
       #get counts of # of traits, # of species
-        length(unique(trait_summary$AccSpeciesName)) #129 161
+        length(unique(trait_summary$AccSpeciesName)) #130 305
         length(unique(trait_summary$TraitName)) #1918
 
       trait_summary %>%
         select(-n)%>%
         unique()%>%
-        nrow() #1 457 057
+        nrow() #1 463 531
 
 
 ##########################################################
@@ -300,7 +308,7 @@ n_species <- length(unique(wcvp$taxon_name))
 
     # How many traits with observation of at least 1%, and are general?
         length(which(trait_list$pct_coverage_clean >= 1 &
-                       trait_list$general == 1)) #55
+                       trait_list$general == 1)) #53
 
   # Completeness per trait
 
@@ -327,13 +335,15 @@ n_species <- length(unique(wcvp$taxon_name))
                     limits=c(0.0001,100))+
         xlab("Percent Completeness (log scale)")+
         ggtitle("Histogram of Trait Completeness")+
-        geom_vline(xintercept = 1,lty=2)
+        geom_vline(xintercept = 1,lty=2) -> trait_hist
 
+      ggsave(filename = "plots/trait_histogram.jpg",
+             plot = trait_hist,height = 3,width = 5,units = "in")
 
 
     #averages
 
-      mean(na.omit(trait_list$pct_coverage_clean))# 0.20 %
+      mean(na.omit(trait_list$pct_coverage_clean))# 0.21 %
       median(na.omit(trait_list$pct_coverage_clean))# 0.0049 %
 
       Mode <- function(x) {
@@ -381,6 +391,13 @@ n_species <- length(unique(wcvp$taxon_name))
         # write.csv(x = focal_trait_coverage,
         #           file = "tables/focal_trait_coverage.csv",row.names = FALSE)
 
+        focal_trait_coverage %>%
+          mutate(pct_species_with_data = (species_with_data/n_species)*100) -> focal_trait_coverage
+
+        min(focal_trait_coverage$pct_species_with_data) #1.00 %
+        max(focal_trait_coverage$pct_species_with_data) #32.28 %
+        mean(focal_trait_coverage$pct_species_with_data) #3.68 %
+        median(focal_trait_coverage$pct_species_with_data) #1.88
 
 ###########################################################
   # We need a dataset that lists completeness as a function of country x trait, which we can join to the shapefile for plotting or use in other analyses
@@ -394,13 +411,13 @@ source("R/get_trait_coverage.R")
 
 
 
-#
-#   trait_coverage <-
-#     get_trait_coverage(wcvp = wcvp,
-#                        trait_summary = trait_summary_for_main_analysis)
-#
-#   saveRDS(object = trait_coverage,
-#           file = "data/focal_trait_coverage.rds")
+
+  # trait_coverage <-
+  #   get_trait_coverage(wcvp = wcvp,
+  #                      trait_summary = trait_summary_for_main_analysis)
+  #
+  # saveRDS(object = trait_coverage,
+  #         file = "data/focal_trait_coverage.rds")
 
 
 
@@ -472,17 +489,17 @@ ggplot(data = countries)+
 
   min(trait_coverage$completeness) # 0 pct completeness
   max(trait_coverage$completeness) # 100 pct completeness
-  mean(trait_coverage$completeness) #18.8 %
-  median(trait_coverage$completeness) # 12.2 %
+  mean(trait_coverage$completeness) #19.4 %
+  median(trait_coverage$completeness) # 12.7 %
 
   mean_completeness_across_country_trait <-
   trait_coverage %>%
     group_by(trait) %>%
     summarise(mean_coverage = mean(completeness))
-  min(mean_completeness_across_country_trait$mean_coverage)*100 #5.872
-  max(mean_completeness_across_country_trait$mean_coverage)*100 # 69.806
-  mean(mean_completeness_across_country_trait$mean_coverage)*100 # 18.824
-  median(mean_completeness_across_country_trait$mean_coverage)*100 #15.277
+  min(mean_completeness_across_country_trait$mean_coverage)*100 #5.93
+  max(mean_completeness_across_country_trait$mean_coverage)*100 # 70.63
+  mean(mean_completeness_across_country_trait$mean_coverage)*100 # 19.39
+  median(mean_completeness_across_country_trait$mean_coverage)*100 #15.42
 
 ##############################################################################
 
@@ -496,8 +513,8 @@ ggplot(data = countries)+
   # get_trait_coverage(wcvp = wcvp,
   #                    trait_summary = trait_summary)
   #
-
-  #saveRDS(object = total_trait_coverage,file = "data/total_trait_coverage.RDS")
+  #
+  # saveRDS(object = total_trait_coverage,file = "data/total_trait_coverage.RDS")
   total_trait_coverage <- readRDS("data/total_trait_coverage.RDS")
 
 
