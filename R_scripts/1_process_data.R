@@ -157,6 +157,12 @@ n_species <- length(unique(wcvp$taxon_name))
         collect() %>%
         unique() -> trait_sp_names
 
+      traits %>%
+        select(TraitName) %>%
+        collect() %>%
+        unique() -> traits_names_og
+
+
     library(TNRS)
 
     #matching the trait names using WCVP for consistency
@@ -181,6 +187,18 @@ n_species <- length(unique(wcvp$taxon_name))
       #             row.names = FALSE)
 
       trait_list <- read.csv("manual_downloads/trait_annotation/trait_list.csv")
+
+      #fix the weird characters that break
+        trait_list %>%
+          mutate(TraitName = gsub(pattern = "â€¦", replacement = "…",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "â€\u009d", replacement = "”",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "â€œ", replacement = "“",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "â€œ", replacement = "“",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "Â",
+                                  replacement = "",
+                                  x=TraitName,fixed = TRUE))-> trait_list
+
+
       hist(log10(trait_list$n), breaks = 100, xlab = "log10(n species with data)", main = "")
 
     # Count the number of observations per species x trait
@@ -210,6 +228,11 @@ n_species <- length(unique(wcvp$taxon_name))
         select(TraitName,TraitID)%>%
         unique() -> tID_lookup
 
+      #make sure names are still all good
+        if(any(which(!tID_lookup$TraitName %in% traits_names_og$TraitName))){
+         stop("check trait names")
+        }
+
       #correct or toss names that cannot be matched
 
       trait_summary[which(trait_summary$AccSpeciesName %in% wcvp$taxon_name),] -> good_names
@@ -218,11 +241,11 @@ n_species <- length(unique(wcvp$taxon_name))
       (nrow(good_names)+nrow(bad_names))==nrow(trait_summary)
 
         #how many names could be matched exactly?
-          length(unique(trait_summary$AccSpeciesName))
-          length(unique(good_names$AccSpeciesName))
+          length(unique(trait_summary$AccSpeciesName)) #171663
+          length(unique(good_names$AccSpeciesName)) #116896
 
           length(unique(good_names$AccSpeciesName))/
-            length(unique(trait_summary$AccSpeciesName)) #68% of names match the wcvp exactly
+            length(unique(trait_summary$AccSpeciesName)) #68% of names match the wcvp exactly, 116,896
 
           length(unique(bad_names$AccSpeciesName))/
             length(unique(trait_summary$AccSpeciesName)) #32% of names aren't matched
@@ -236,15 +259,22 @@ n_species <- length(unique(wcvp$taxon_name))
             all.y = FALSE) -> bad_names
 
         #how many bad names can be matched to a species?
-          length(unique(bad_names$AccSpeciesName[which(bad_names$Accepted_name_rank != "species")]))#25391
+
+        length(unique(bad_names$AccSpeciesName[which(!bad_names$Accepted_species == "")]))/
+        length(unique(bad_names$AccSpeciesName)) #67% can be matched to a species (36825/54767)
 
           length(unique(bad_names$AccSpeciesName[which(bad_names$Accepted_species == "")]))/
-          length(unique(bad_names$AccSpeciesName)) #32% aren't matched to species
+          length(unique(bad_names$AccSpeciesName)) #32% aren't matched to species, 17931/54767
+
+
+
+
 
         bad_names %>%
         #filter(Accepted_name_rank == "species") %>% #toss names that couldn't be matched to species
         filter(Accepted_species != "") %>% #toss names that couldn't be matched to species
         select(AccSpeciesName, TraitName, n, Accepted_species) %>%
+          mutate(acc_name_og = AccSpeciesName)%>%
         mutate(AccSpeciesName = Accepted_species) %>%
         select(-Accepted_species) -> bad_names
 
@@ -255,16 +285,28 @@ n_species <- length(unique(wcvp$taxon_name))
                                          replacement = " × ",
                                          x = bad_names$AccSpeciesName)
 
+      #How many names do we get to keep?
+        length(unique(bad_names$acc_name_og[which(bad_names$AccSpeciesName %in% wcvp$taxon_name)]))#35548
+        length(unique(bad_names$acc_name_og[which(!bad_names$AccSpeciesName %in% wcvp$taxon_name)]))#1277
 
+      #Toss this field now that I have the counts
+        bad_names %>%
+          select(-acc_name_og) -> bad_names
 
       #Only keep TNRSed names that match to our list of accepted taxa
       bad_names[which(!bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names_to_toss
       bad_names[which(bad_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_names
 
       length(unique(bad_names$AccSpeciesName)) #25881
-      length(unique(bad_names_to_toss$AccSpeciesName))#1102 #largely hybrids
+      length(unique(bad_names_to_toss$AccSpeciesName))#1102
 
-      #25881/54767 = 47% of non-matching names could be rescued by the TNRS
+      #% of names that can be rescued = 25881/54767 = 47%
+
+      #36825 + 17931 (species vs non-species)
+      #35548 + 1277 (kept vs tossed)
+      #35548/54767 # 65% kept
+      #17931/54767 # 33 tossed (no species)
+      #1277/54767 # 2% tossed (not in WCVP)
 
 
       #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
@@ -281,6 +323,10 @@ n_species <- length(unique(wcvp$taxon_name))
         unique()%>%
         nrow() #1 463 531
 
+      #make sure names are still all good
+      if(any(which(!trait_summary$TraitName %in% traits_names_og$TraitName))){
+        stop("check trait names")
+      }
 
 ##########################################################
 
@@ -324,8 +370,6 @@ n_species <- length(unique(wcvp$taxon_name))
       hist(trait_list$pct_coverage_clean,breaks = 100,main = "Histogram of Trait Coverage",xlab = "Percent Coverage")
       hist(log10(trait_list$pct_coverage_clean),breaks = 100,main = "Histogram of Trait Coverage",xlab = "log(Percent Coverage)")
 
-
-
       trait_list %>%
         ggplot(mapping = aes(pct_coverage_clean))+
         geom_histogram(fill = "magenta")+
@@ -344,7 +388,7 @@ n_species <- length(unique(wcvp$taxon_name))
     #averages
 
       mean(na.omit(trait_list$pct_coverage_clean))# 0.21 %
-      median(na.omit(trait_list$pct_coverage_clean))# 0.0049 %
+      median(na.omit(trait_list$pct_coverage_clean))# 0.0051 %
 
       Mode <- function(x) {
         ux <- unique(x)
@@ -379,6 +423,7 @@ n_species <- length(unique(wcvp$taxon_name))
 
       trait_summary_for_main_analysis <-  readRDS("data/trait_summary_for_main_analysis.RDS")
       trait_list_w_coverage <- readRDS("data/trait_list_w_coverage.RDS")
+
 
       # Per reviewer 2's suggestion, create a table containing traits and coverage for the 55 focal traits
 
@@ -557,7 +602,7 @@ traits %>%
     unique() %>%
     pivot_wider(id_cols = ObservationID,
                 names_from = DataName,
-                values_from = OrigValueStr) -> useful_md #668k
+                values_from = OrigValueStr) -> useful_md #707k
 
   source("R/get_countries.R")
   tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
@@ -566,7 +611,7 @@ traits %>%
 
   #How many of the records couldn't be assigned to a bot country?
 
-  stop("code") #og useful m is 668 759 if same number isn't returned, modify to record og number
+    #og useful md is 707 402 if same number isn't returned, modify to record og number
 
   useful_md %>%
     select(ObservationID, LEVEL_NAME) %>%
@@ -579,6 +624,7 @@ traits %>%
       filter(!is.na(LEVEL_NAME)) -> useful_md
 
     message(nrow(useless_md)/(nrow(useless_md)+nrow(useful_md))*100,"% of metadata cannot be used due to errors, etc.")
+      #8% of md can't be used
 
   #Now, pull only the trait observations with an ObservationID in the useful_md dataset
     #and append country to traits where possible
@@ -593,12 +639,18 @@ traits %>%
       count() -> stc #stc = species + trait + country
 
 
-    #matching the trait names using WCVP for consistency
-      TNRS(taxonomic_names = unique(stc$AccSpeciesName),
-            sources = "wcvp") -> tnrsed_stc_names
+    #matching the species names using WCVP for consistency (note that this could be better done by simply using the previous set of TNRS output.  But I've already written the code, so meh.)
+      # TNRS(taxonomic_names = unique(stc$AccSpeciesName),
+      #       sources = "wcvp") -> tnrsed_stc_names
+      #
+      # saveRDS(object = tnrsed_stc_names,file = "data/tnrsed_georef_names.RDS")
+      tnrsed_stc_names <- readRDS("data/tnrsed_georef_names.RDS")
 
       stc[which(stc$AccSpeciesName %in% wcvp$taxon_name),] -> good_stc_names
       stc[which(!stc$AccSpeciesName %in% wcvp$taxon_name),] -> bad_stc_names
+
+      nrow(good_stc_names)/nrow(stc) #81.95 % of georef names match exactly
+      nrow(bad_stc_names)/nrow(stc) #18.05 % of georef names don't match exactly
 
       merge(x = bad_stc_names,
             y = tnrsed_stc_names,
@@ -606,12 +658,25 @@ traits %>%
             by.y = "Name_submitted",
             all.x = TRUE,
             all.y = FALSE) %>%
-        filter(Accepted_name_rank == "species") %>% #toss names that couldn't be matched to species
+        #filter(Accepted_name_rank == "species") %>% #toss names that couldn't be matched to species
+        filter(Accepted_species != "") %>% #toss names that couldn't be matched to species
         select(AccSpeciesName, TraitName,LEVEL_NAME, n, Accepted_species) %>%
         mutate(AccSpeciesName = Accepted_species) %>%
         select(-Accepted_species) -> bad_stc_names
 
+      #Fix hybrid notation issue
+      # wcvp uses "×" for hybrids
+      # TNRS uses "x"
+      bad_stc_names$AccSpeciesName <- gsub(pattern = " x ",
+                                       replacement = " × ",
+                                       x = bad_stc_names$AccSpeciesName)
+
+
       #Toss names that don't match to our list of accepted taxa
+
+        nrow(bad_stc_names[which(!bad_stc_names$AccSpeciesName %in% wcvp$taxon_name),])/nrow(bad_stc_names) #only 3.70% of the non-matching georef names could not be rescued
+        nrow(bad_stc_names[which(bad_stc_names$AccSpeciesName %in% wcvp$taxon_name),])/nrow(bad_stc_names) # 96.30% of the non-matching georef names COULD be rescued
+
         bad_stc_names[which(bad_stc_names$AccSpeciesName %in% wcvp$taxon_name),] -> bad_stc_names
 
       #Add the totals for the good and bad names together  (needed in case a bad name matched to a good name that was already present)
@@ -621,6 +686,15 @@ traits %>%
 
       #We need to know the number of fraction of trait x species combinations overall
         trait_list_stc <- read.csv("manual_downloads/trait_annotation/trait_list.csv")
+
+        trait_list_stc %>%
+          mutate(TraitName = gsub(pattern = "â€¦", replacement = "…",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "â€\u009d", replacement = "”",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "â€œ", replacement = "“",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "â€œ", replacement = "“",x=TraitName))%>%
+          mutate(TraitName = gsub(pattern = "Â",
+                                  replacement = "",
+                                  x=TraitName,fixed = TRUE))-> trait_list_stc
 
 
         stc %>%
@@ -641,15 +715,26 @@ traits %>%
         rm(stc_trait_list_v2)
 
         stc_trait_list$pct_coverage_clean[which(is.na(stc_trait_list$pct_coverage_clean))] <- 0
+        stc_trait_list$n_clean[which(is.na(stc_trait_list$n_clean))] <- 0
 
         # What is the mean coverage across all georeferenced traits?
 
-          mean(stc_trait_list$pct_coverage_clean)
+          mean(stc_trait_list$pct_coverage_clean) #0.067%
+          max(stc_trait_list$pct_coverage_clean) #5.54%
+
+        # How many traits have at least one georef value?
+          stc_trait_list$TraitName[which(stc_trait_list$n_clean>0)]%>%
+            unique()%>%
+            length() #1553
+
+          (stc_trait_list$TraitName[which(stc_trait_list$n_clean>0)]%>%
+            unique()%>%
+            length())/nrow(stc_trait_list) #76.61% of traits have georeferenced values
 
 
         # How many traits with observation of at least 1%, and are general?
         length(which(stc_trait_list$pct_coverage_clean >= 1 &
-                       stc_trait_list$general == 1)) #29
+                       stc_trait_list$general == 1)) #28
 
 
         traits_for_geo_analysis <-
@@ -657,10 +742,10 @@ traits %>%
           filter(pct_coverage_clean >= 1 & general == 1)
 
         # coverage stats for the focal geo dataset
-        traits_for_geo_analysis[which.max(traits_for_geo_analysis$pct_coverage_clean),]#5.46
-        traits_for_geo_analysis[which.min(traits_for_geo_analysis$pct_coverage_clean),]#1.04
-        mean(traits_for_geo_analysis$pct_coverage_clean)#1.82
-        median(traits_for_geo_analysis$pct_coverage_clean)#1.63
+        traits_for_geo_analysis[which.max(traits_for_geo_analysis$pct_coverage_clean),]#5.54
+        traits_for_geo_analysis[which.min(traits_for_geo_analysis$pct_coverage_clean),]#1.10
+        mean(traits_for_geo_analysis$pct_coverage_clean)#1.85
+        median(traits_for_geo_analysis$pct_coverage_clean)#1.64
 
 
         trait_summary_for_geo_analysis <-
@@ -672,7 +757,7 @@ traits %>%
 
   #run through a country-specific version of get_trait_coverage()
 
-
+        # source("R/get_georeference_trait_coverage.R")
         # georeferenced_trait_coverage <-
         #   get_georeferenced_trait_coverage(wcvp = wcvp,
         #                      trait_summary_for_geo_analysis = trait_summary_for_geo_analysis,
@@ -683,7 +768,6 @@ traits %>%
         #         file = "data/focal_georeferenced_trait_coverage.rds")
 
         georeferenced_trait_coverage <- read_rds("data/focal_georeferenced_trait_coverage.rds")
-
 
         # TDWG polygons from https://github.com/tdwg/wgsrpd/tree/master/level3 on 3/25/2022
 
