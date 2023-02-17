@@ -877,9 +877,16 @@ traits %>%
 
         rm(gfs,trs,wps)
 
-      putative_wood <- TNRS::TNRS(taxonomic_names = putative_wood$AccSpeciesName,
-                                  sources = "wcvp") %>%
-                        filter(Accepted_species != "")
+      # putative_wood <- TNRS::TNRS(taxonomic_names = putative_wood$AccSpeciesName,
+      #                             sources = "wcvp") %>%
+      #                   filter(Accepted_species != "")
+      #
+      #   saveRDS(object = putative_wood,file = "data/tnrsed_wood.RDS")
+        putative_wood <- readRDS("data/tnrsed_wood.RDS")
+
+          putative_wood$Accepted_species <- gsub(pattern = " x ",
+                                           replacement = " × ",
+                                           x = putative_wood$Accepted_species)
 
 
         # Load WCVP
@@ -951,12 +958,16 @@ traits %>%
             mutate(ID=row_number())%>%
             select(ID,AccSpeciesName)-> bad_wood_names
 
-          TNRSed_bad_wood_names <- TNRS::TNRS(taxonomic_names = bad_wood_names,
-                                              sources = "wcvp")
+          # TNRSed_bad_wood_names <- TNRS::TNRS(taxonomic_names = bad_wood_names,
+          #                                     sources = "wcvp")
+          # saveRDS(object = TNRSed_bad_wood_names,file = "data/tnrsed_bad_wood.RDS")
+          TNRSed_bad_wood_names <- readRDS("data/tnrsed_bad_wood.RDS")
 
           bad_wood_names <-
           bad_wood_names %>%
-            inner_join(y = TNRSed_bad_wood_names%>%mutate(ID=as.numeric(ID)),by = "ID")
+            inner_join(y = TNRSed_bad_wood_names %>%
+                         mutate(ID=as.numeric(ID)),
+                       by = "ID")
 
           bad_wood_summary <-
           bad_wood_names %>%
@@ -973,8 +984,7 @@ traits %>%
             summarise(n=sum(n))%>%
             filter(AccSpeciesName != "")
 
-          rm(good_wood_summary,bad_wood_names,bad_wood_names)
-
+          rm(good_wood_summary,bad_wood_names)
 
           source("R/get_trait_coverage.R")
 
@@ -1106,8 +1116,8 @@ traits %>%
             wcvp %>%
             filter(family %in% flower_fams)
 
-          saveRDS(object = wcvp_flower,
-                  file = "manual_downloads/WCVP/wcvp_cleaned_flower.RDS")
+          # saveRDS(object = wcvp_flower,
+          #         file = "manual_downloads/WCVP/wcvp_cleaned_flower.RDS")
 
           wcvp_flower <- readRDS(file = "manual_downloads/WCVP/wcvp_cleaned_flower.RDS")
 
@@ -1129,13 +1139,13 @@ traits %>%
           traits %>%
             filter(grepl(pattern = "seed", ignore.case = TRUE,x = TraitName)|
                      grepl(pattern = "flower", ignore.case = TRUE,x = TraitName)|
-                     grepl(pattern = "inflorescence", ignore.case = TRUE,x = TraitName)) %>% #filter to only traits pertaining to wood
+                     grepl(pattern = "inflorescence", ignore.case = TRUE,x = TraitName)) %>%
             select(AccSpeciesName,TraitName) %>%
             group_by(AccSpeciesName, TraitName)%>%
             summarize(n = n())%>%
             collect() -> flower_and_seed_trait_summary
 
-          #check/fix wood species names
+          #check/fix species names
           good_flower_and_seed_summary <- flower_and_seed_trait_summary[which(flower_and_seed_trait_summary$AccSpeciesName %in% wcvp_flower$taxon_name|
                                                                                 flower_and_seed_trait_summary$AccSpeciesName %in% wcvp_seed$taxon_name  ),]
 
@@ -1226,10 +1236,6 @@ traits %>%
 
           n_seed_species
 
-          seed_traits_focal <-
-            seed_trait_coverage %>%
-            filter(trait %in% seed_trait_list$TraitName[which(seed_trait_list$pct_coverage_clean >= 1)])
-
 
           # seed_trait_coverage <-
           #   get_trait_coverage(wcvp = wcvp_seed,
@@ -1237,6 +1243,12 @@ traits %>%
 
           # saveRDS(object = seed_trait_coverage,
           #         file = "data/seed_trait_coverage.rds")
+
+
+          seed_traits_focal <-
+            seed_trait_coverage %>%
+            filter(trait %in% seed_trait_list$TraitName[which(seed_trait_list$pct_coverage_clean >= 1)])
+
 
 
           # focal dataset as per the others
@@ -1291,8 +1303,8 @@ traits %>%
             get_trait_coverage(wcvp = wcvp_flower,
                                trait_summary = flower_trait_summary)
 
-          saveRDS(object = flower_trait_coverage,
-                  file = "data/flower_trait_coverage.rds")
+          # saveRDS(object = flower_trait_coverage,
+          #         file = "data/flower_trait_coverage.rds")
 
           # focal dataset as per the others
 
@@ -1305,12 +1317,6 @@ traits %>%
 
           # saveRDS(object = flower_traits_focal,
           #         file = "data/focal_flower_trait_coverage.rds")
-          #
-
-
-
-
-
 
 
 ##########################################
