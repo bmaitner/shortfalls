@@ -1,0 +1,54 @@
+"TraitName","species_with_data","TraitID"
+"Plant growth form",113620,42
+"Leaf type",54625,43
+"Leaf compoundness",50313,17
+"Leaf photosynthesis pathway",31380,22
+"Species tolerance to frost",27178,31
+"Leaflet number per leaf",26891,759
+"Plant height vegetative",25845,3106
+"Leaf phenology type",23385,37
+"Plant lifespan (longevity)",22192,59
+"Dispersal syndrome",19375,28
+"Plant resprouting capacity",14723,819
+"Leaf shape",13913,154
+"Leaf distribution along the shoot axis (arrangement type)",11632,16
+"Leaf area per leaf dry mass (specific leaf area, SLA or 1/LMA): undefined if petiole is in- or excluded",11256,3117
+"Plant nitrogen(N) fixation capacity",11021,8
+"Plant life form (Raunkiaer life form)",10987,343
+"Leaf nitrogen (N) content per leaf dry mass",10017,14
+"Leaf margin type",8345,963
+"Leaf width",8150,145
+"Plant reproductive phenology timing",7561,335
+"Leaf nitrogen (N) content per leaf area",7377,50
+"Leaf texture (sclerophylly, physical strength, toughness)",7157,2
+"Leaf area (in case of compound leaves: leaflet, undefined if petiole is in- or excluded)",7119,3113
+"Leaf length",7081,144
+"Species genotype: chromosome number",7053,223
+"Leaf area per leaf dry mass (specific leaf area, SLA or 1/LMA): petiole excluded",6611,3115
+"Mycorrhiza type",6607,7
+"Leaf phosphorus (P) content per leaf dry mass",6579,15
+"Species genotype: chromosome ploidy",6380,222
+"Species genotype: chromosome cDNA content",6375,224
+"Leaf area (in case of compound leaves: leaf, undefined if petiole in- or excluded)",6217,3112
+"Leaf thickness",6183,46
+"Leaf dry mass (single leaf)",6064,55
+"Leaf area per leaf dry mass (specific leaf area, SLA or 1/LMA): petiole included",6047,3116
+"Leaf dry mass per leaf fresh mass (leaf dry matter content, LDMC)",5991,47
+"Species tolerance to fire",5689,318
+"Dispersal unit type",5500,231
+"Leaf carbon (C) content per leaf dry mass",5208,13
+"Leaf area (in case of compound leaves undefined if leaf or leaflet, undefined if petiole is in- or excluded)",5194,3114
+"Leaf venation type",5188,2813
+"Root type, root architecture",5181,65
+"Plant growth rate",5011,587
+"Budbank height distribution",4716,153
+"Leaf carbon/nitrogen (C/N) ratio",4345,146
+"Leaf carbon (C) isotope signature (delta 13C)",4193,89
+"Leaf carbon (C) content per leaf area",4184,570
+"Leaf density (leaf tissue density, leaf dry mass per leaf volume)",4124,48
+"Leaf phosphorus (P) content per leaf area",3998,51
+"Leaf photosynthesis rate per leaf area",3973,53
+"Leaf area (in case of compound leaves: leaflet, petiole excluded)",3878,3109
+"Plant vegetative regeneration capacity",3833,344
+"Species tolerance to shade",3747,603
+"Plant morphological adaptations: shoot metamorphoses",3527,817
