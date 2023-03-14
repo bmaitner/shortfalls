@@ -19,7 +19,38 @@ library(cowplot)
   tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
 
   # Load overall trait completeness
-  general_traits_one_percent_threshold <- read_rds("data/focal_trait_coverage.rds")
+  general_traits_one_percent_threshold <- read_rds("data/cleaning_raw_names/focal_trait_coverage.rds")
+
+###########################################################
+  #Summary stats of trait completeness
+  min(general_traits_one_percent_threshold$completeness)
+  countries_with_no_traits  <- general_traits_one_percent_threshold[which(general_traits_one_percent_threshold$completeness==0),]
+  countries_with_all_traits  <- general_traits_one_percent_threshold[which(general_traits_one_percent_threshold$completeness==1),]
+
+
+  countries_with_no_traits %>%
+    inner_join(tdwg %>%
+                 dplyr::select(LEVEL_3_CO,LEVEL_NAME)%>%
+                 st_drop_geometry(),
+               by = c("area" = "LEVEL_3_CO"))-> countries_with_no_traits
+
+    unique(countries_with_no_traits$LEVEL_NAME) #all islands and antarctica
+
+
+    countries_with_all_traits %>%
+      inner_join(tdwg %>%
+                   dplyr::select(LEVEL_3_CO,LEVEL_NAME)%>%
+                   st_drop_geometry(),
+                 by = c("area" = "LEVEL_3_CO"))-> countries_with_all_traits
+
+    unique(countries_with_all_traits$LEVEL_NAME) #all islands and antarctica
+
+    #mean and median completeness within botanical countries
+    mean(general_traits_one_percent_threshold$completeness)#19.4
+    median(general_traits_one_percent_threshold$completeness)#12.7
+
+
+
 
 ###########################################################
 # Mean coverage map (unfortunately, the editors specified a projection that causes problems in everything)
@@ -53,6 +84,15 @@ library(cowplot)
     theme_map()-> overall_trait_completeness
 
 
+  # summary stats for mean coverage
+    min(tdwg$mean_coverage_focal)*100 #2.84%
+    tdwg$LEVEL_NAME[which.min(tdwg$mean_coverage_focal)] #New Guinea
+
+    max(tdwg$mean_coverage_focal)*100 #58.67
+    tdwg$LEVEL_NAME[which.max(tdwg$mean_coverage_focal)] #"Føroyar" aka Faroe islands
+
+    mean(tdwg$mean_coverage_focal)*100 #19.49
+    median(tdwg$mean_coverage_focal)*100 #17.31
 
   # #############
   #
@@ -66,18 +106,21 @@ library(cowplot)
   #                       limits=c(0,100))+
   #   theme_minimal()-> overall_trait_completeness
 
-ggsave(filename = "plots/focal_completeness.svg",width = 10,height = 10)
-ggsave(filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "white")
+ggsave(plot = overall_trait_completeness,
+       filename = "plots/focal_completeness.svg",width = 10,height = 10)
+
+ggsave(plot = overall_trait_completeness,
+       filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "white")
 
 
 #######################################################
 
-#Trivariate map
+#Load Rudbeck data
 
   rudbeck_data <- read.table("data\\variables_2022.csv",sep = ",",
                              header = TRUE)
 
-  focal_trait_coverage_no_ferns <- readRDS("data/focal_trait_coverage_no_ferns.rds")
+  focal_trait_coverage_no_ferns <- readRDS("data/cleaning_raw_names/focal_trait_coverage_no_ferns.rds")
 
 
   tdwg <-
@@ -103,36 +146,11 @@ ggsave(filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "
     mutate(TRAIT_COMPLETENESS_NO_FERNS = mean_coverage_focal_no_ferns*100) -> tdwg
 
 
-#GEN_DUP,BIEN_OCCUR
-
-  library(tricolore)
-  tric <- Tricolore(tdwg, p1 = 'GEN_DUP', p2 = 'BIEN_OCCUR', p3 = 'mean_coverage_focal')
-
-  tdwg$rgb <- tric$rgb
-  library(ggtern)
-
-  tdwg %>%
-    st_transform(crs = st_crs(6933))%>%
-  ggplot() +
-    # ...draw a polygon for each region...
-    geom_sf(aes(fill = rgb, geometry = geometry), size = 0.1) +
-    # ...and color each region according to the color code in the variable `rgb`
-    scale_fill_identity() +
-    annotation_custom(
-      ggplotGrob(tric$key +
-                   theme(plot.background = element_rect(fill = NA, color = NA)) +
-                   labs(L = 'Genetic', T = 'Distribution', R = 'Traits')),
-      xmin = -19367530, xmax = -5367530,
-      ymin = -7342230 , ymax = 300000
-    )+theme_minimal()
-
-
-
 ##########################
 
 
   tdwg %>%
-    st_transform_proj(rs = crs_wintri) %>%
+    st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
@@ -298,7 +316,8 @@ library(ggpubr)
                                                           after_stat(n.label),
                                                           sep = "*\"; \"*")),
                      small.p = TRUE,
-                     small.r = TRUE)
+                     small.r = TRUE)+
+    theme_bw()
 
   trait_v_dist <-
 
@@ -327,7 +346,8 @@ library(ggpubr)
                                                           after_stat(n.label),
                                                           sep = "*\"; \"*")),
                      small.p = TRUE,
-                     small.r = TRUE)
+                     small.r = TRUE)+
+    theme_bw()
 
   library(ggplot2)
 
@@ -338,6 +358,7 @@ library(ggpubr)
             nrow = 2,
             widths = c(2,1),
             labels = "AUTO")
+
   ggsave(filename = "plots/phylo_and_dist_completeness.svg",width = 10,height = 4.5)
   ggsave(filename = "plots/phylo_and_dist_completeness_tall.svg",width = 10,height = 4.5)
   ggsave(filename = "plots/phylo_and_dist_completeness.jpg",width = 10,height = 4.5, bg = "white")
@@ -348,14 +369,21 @@ library(ggpubr)
     max(tdwg$DISRIBUTIONAL_COMPLETENESS) #100%
     min(tdwg$DISRIBUTIONAL_COMPLETENESS) #0%
     mean(tdwg$DISRIBUTIONAL_COMPLETENESS) #47.12%
-    median(tdwg$DISRIBUTIONAL_COMPLETENESS) #51.65%
+    median(tdwg$DISRIBUTIONAL_COMPLETENESS) #51.66%
 
 
   # Phylogenetic data
     max(tdwg$GENETIC_COMPLETENESS) #11.28%
     min(tdwg$GENETIC_COMPLETENESS) #1.34%
     mean(tdwg$GENETIC_COMPLETENESS) #5.67%
-    median(tdwg$GENETIC_COMPLETENESS) #5.49%
+    median(tdwg$GENETIC_COMPLETENESS) #5.40%
+
+  # Traits data
+    max(tdwg$TRAIT_COVERAGE) #58.68%
+    min(tdwg$TRAIT_COVERAGE) #2.84%
+    mean(tdwg$TRAIT_COVERAGE) #19.49%
+    median(tdwg$TRAIT_COVERAGE) #17.31%
+
 
   #Where do we have more trait than distributional data?
 
@@ -375,7 +403,7 @@ library(ggpubr)
 # Georeferenced map
 
   # Load overall trait completeness
-  geo_traits_one_percent_threshold <- read_rds("data/focal_georeferenced_trait_coverage.rds")
+  geo_traits_one_percent_threshold <- read_rds("data/cleaning_raw_names/focal_georeferenced_trait_coverage.rds")
 
 
   geo_traits_one_percent_threshold
@@ -421,7 +449,8 @@ library(ggpubr)
                                                           after_stat(n.label),
                                                           sep = "*\"; \"*")),
                      small.p = TRUE,
-                     small.r = TRUE)
+                     small.r = TRUE)+
+    theme_bw()
 
   #combine map and plot
   geo_plot_and_map <-
@@ -455,7 +484,7 @@ library(ggpubr)
 
   #Wood map
 
-  wood_traits_focal_one_percent_threshold <- readRDS("data/focal_wood_trait_coverage.rds")
+  wood_traits_focal_one_percent_threshold <- readRDS("data/cleaning_raw_names/focal_wood_trait_coverage.rds")
 
 
   tdwg <-
@@ -488,7 +517,7 @@ tdwg %>%
 
   # flower map
 
-  flower_traits_focal_one_percent_threshold <- readRDS("data/focal_flower_trait_coverage.rds")
+  flower_traits_focal_one_percent_threshold <- readRDS("data/cleaning_raw_names/focal_flower_trait_coverage.rds")
 
 
   tdwg <-
@@ -521,7 +550,7 @@ tdwg %>%
 
   # seed map
 
-  seed_traits_focal_one_percent_threshold <- readRDS("data/focal_seed_trait_coverage.rds")
+  seed_traits_focal_one_percent_threshold <- readRDS("data/cleaning_raw_names/focal_seed_trait_coverage.rds")
 
 
   tdwg <-
@@ -725,24 +754,29 @@ tdwg %>%
                                  method="pearson",alternative="two.sided",exact = TRUE)
 
 
-  corrplot(  cor(data_for_cor),
-             addCoef.col="black")
+  library(Cairo)
 
-
-  corrplot( correlations ,
-             addCoef.col="black",
-             order = "FPC",
-             tl.col = "black",
-            p.mat = correlation_pvals$p,
-            lowCI.mat = correlation_pvals$lowCI,
-            uppCI.mat = correlation_pvals$uppCI,plotCI = "circle")
+  Cairo(file="plots/data_type_correlations.jpg",
+        type="jpg",
+        units="in",
+        width=10,
+        height=10,
+        dpi=300)
 
 
   corrplot( correlations ,
             addCoef.col="black",
             order = "FPC",
             tl.col = "black",
+            tl.cex = c(rep(.75,6),1),
             p.mat = correlation_pvals$p)
+
+
+  ## When the device is off, file writing is completed.
+  dev.off()
+
+
+
 
 #####################################################################
 

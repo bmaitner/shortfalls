@@ -51,7 +51,8 @@ get_countries <- function(useful_md, tdwg){
 
 
       useful_md_working %>%
-        bind_rows(next_batch %>%select(colnames(useful_md_working))) -> useful_md_working
+        bind_rows(next_batch %>%
+                    dplyr::select(colnames(useful_md_working))) -> useful_md_working
 
       #give up on anything without lat/long
 
@@ -66,7 +67,8 @@ get_countries <- function(useful_md, tdwg){
 
 
       useful_md_working %>%
-        bind_rows(next_batch %>%select(colnames(useful_md_working))) -> useful_md_working
+        bind_rows(next_batch %>%
+                    dplyr::select(colnames(useful_md_working))) -> useful_md_working
 
 
       #whats left: anomalously formatted lat/lons
@@ -84,7 +86,7 @@ get_countries <- function(useful_md, tdwg){
     # Now, assign botanical country to places with coordinates
 
       useful_md_working %>%
-        select(assigned_lat, assigned_lon) %>%
+        dplyr::select(assigned_lat, assigned_lon) %>%
         filter(!is.na(assigned_lat) & !is.na(assigned_lon)) %>%
         unique()%>%
         st_as_sf(coords = c("assigned_lon","assigned_lat"),
@@ -110,7 +112,7 @@ get_countries <- function(useful_md, tdwg){
         library(GNRS)
 
         useful_md_working %>%
-          select(`Location Country`,`Location: state`) %>%
+          dplyr::select(`Location Country`,`Location: state`) %>%
           unique() -> try_countries
 
       GNRSed_TRY_countries <-
@@ -120,7 +122,7 @@ get_countries <- function(useful_md, tdwg){
       GNRSed_TRY_countries %>%
         filter(!is.na(country)) %>%
         filter(country != "") %>%
-        select(country_verbatim, state_province_verbatim, country,state_province) -> GNRSed_TRY_countries
+        dplyr::select(country_verbatim, state_province_verbatim, country,state_province) -> GNRSed_TRY_countries
 
 
       #First, we'll try to match TDWG level names
@@ -164,7 +166,7 @@ get_countries <- function(useful_md, tdwg){
       #Merge the useful fields (TDWG_country_name) of the name key to the useful_md_working
 
           name_key %>%
-            select(TRY_country_name,
+            dplyr::select(TRY_country_name,
                    TRY_state_name,
                    TDWG_country_name,
                    TDWG_state_name) %>%
@@ -176,7 +178,7 @@ get_countries <- function(useful_md, tdwg){
       # Merge the useful fields of the extracted bits to the full dataset
           useful_md_working %>%
             rename("TDWG_country_imputed" = "LEVEL_NAME") %>%
-            select("ObservationID", "TDWG_country_imputed")%>%
+            dplyr::select("ObservationID", "TDWG_country_imputed")%>%
             right_join(y = useful_md_plus,
                        by = "ObservationID") -> useful_md_working
           rm(useful_md_plus)
@@ -198,12 +200,12 @@ get_countries <- function(useful_md, tdwg){
 
         #Now, assign a single country to the md
           useful_md_working %>%
-            select(ObservationID, TDWG_country_imputed, TDWG_country_name) -> useful_md_working
+            dplyr::select(ObservationID, TDWG_country_imputed, TDWG_country_name) -> useful_md_working
 
           useful_md_working %>%
             mutate(LEVEL_NAME = case_when(!is.na(TDWG_country_imputed) ~ TDWG_country_imputed,
                                           !is.na(TDWG_country_name) & is.na(TDWG_country_imputed) ~ TDWG_country_name)) %>%
-            select(ObservationID, LEVEL_NAME) -> useful_md_working
+            dplyr::select(ObservationID, LEVEL_NAME) -> useful_md_working
 
 
         # Append the assigned country to the md and return

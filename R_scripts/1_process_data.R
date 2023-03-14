@@ -351,10 +351,15 @@ n_species <- length(unique(wcvp$taxon_name))
       trait_list$n_clean[which(is.na(trait_list$n_clean))] <- 0
       trait_list$pct_coverage_clean[which(is.na(trait_list$pct_coverage_clean))] <- 0
 
+    # How many traits have at least 1% coverage
+      length(which(trait_list$pct_coverage_clean >= 1)) #82
+        #2027-82 = 1945 excluded by this
 
     # How many traits with observation of at least 1%, and are general?
         length(which(trait_list$pct_coverage_clean >= 1 &
                        trait_list$general == 1)) #53
+
+        #82 - 53 = 29 traits excluded by these criteria
 
   # Completeness per trait
 
