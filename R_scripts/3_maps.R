@@ -3,13 +3,9 @@
 
 # Load libraries
 library(tidyverse)
-library(lme4)
 library(sf)
-library(tricolore)
-library(expss)
 library(lwgeom)
 library("ggplot2")
-library(sf)
 library(cowplot)
 
 ###########################################################

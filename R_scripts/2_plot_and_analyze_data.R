@@ -7,7 +7,6 @@ library(lme4)
 
 # Get TRY data
 
-
 library(sf)
 #tdwg <- read_sf("manual_downloads/TDWG/level3.shp")
 tdwg <- read_sf("manual_downloads/TDWG/old_lv3/level3.shp")
