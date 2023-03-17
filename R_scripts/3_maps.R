@@ -17,6 +17,10 @@ library(cowplot)
   # Load overall trait completeness
   general_traits_one_percent_threshold <- read_rds("data/cleaning_raw_names/focal_trait_coverage.rds")
 
+  write.csv(x = general_traits_one_percent_threshold,
+            file = "tables/focal_trait_coverage_per_country.csv",
+            row.names = FALSE)
+
 ###########################################################
   #Summary stats of trait completeness
   min(general_traits_one_percent_threshold$completeness)
