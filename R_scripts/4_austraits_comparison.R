@@ -187,6 +187,7 @@ plot_try <-
     #st_transform(crs = st_crs(6933))%>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
@@ -202,7 +203,6 @@ plot_try <-
   xlab(NULL)+
     ylab(NULL)+
   ggtitle("TRY")+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -213,6 +213,7 @@ plot_austry <-
     #st_transform(crs = st_crs(6933))%>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
@@ -228,7 +229,6 @@ plot_austry <-
                                                digits = 1)),inherit.aes = TRUE)+
     xlab(NULL)+ylab(NULL)+
   ggtitle("TRY + AusTraits")+
-  geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
   coord_sf(datum = NULL) +
   theme_map()
 

@@ -53,7 +53,7 @@ library(cowplot)
 
 
 ###########################################################
-# Mean coverage map (unfortunately, the editors specified a projection that causes problems in everything)
+# Mean coverage map (unfortunately, the specified projection is a pain)
 
   tdwg <-
   general_traits_one_percent_threshold %>%
@@ -73,13 +73,13 @@ library(cowplot)
 
 
   ggplot(world_wintri) +
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Mean Trait\nCompleteness\n(%)",
                         limits=c(0,100))+
     #geom_sf(size = 0.5/.pt) +
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()-> overall_trait_completeness
 
@@ -225,12 +225,12 @@ trait_completeness <-
     #st_transform(crs = st_crs(6933)) %>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = mean_coverage_focal*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Trait \nCompleteness\n(%)")+
     #theme_minimal()+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -241,12 +241,12 @@ trait_completeness <-
     #st_transform(crs = st_crs(6933)) %>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = BIEN_OCCUR*100))+
     scale_fill_gradient(low = "white",
                         high = "#74ee15",
                         name = "Distributional \nCompleteness\n(%)")+
     #theme_minimal()+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -258,12 +258,12 @@ trait_completeness <-
     #st_transform(crs = st_crs(6933)) %>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = GEN_DUP * 100))+
     scale_fill_gradient(low = "white",
                         high = "#00D1D0",
                         name = "Phylogenetic \nCompleteness\n(%)")+
     #theme_minimal()+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -423,12 +423,12 @@ library(ggpubr)
     #st_transform(crs = st_crs(6933))%>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = mean_geo_coverage*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
                         name = "Mean \nGeoreferenced\nTrait\nCompleteness \n(%)")+
     #theme_minimal()
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
       coord_sf(datum = NULL) +
       theme_map()
 
@@ -501,6 +501,7 @@ tdwg %>%
   #st_transform(crs = st_crs(6933))%>%
   st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = wood_mean_coverage*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
@@ -508,7 +509,6 @@ tdwg %>%
                         limits=c(0,100))+
     #theme_minimal()+
     ggtitle("Wood Traits")+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -533,6 +533,7 @@ tdwg %>%
     #st_transform(crs = st_crs(6933))%>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = flower_mean_coverage*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
@@ -540,7 +541,6 @@ tdwg %>%
                         limits=c(0,100))+
     #theme_minimal()+
     ggtitle("Flower Traits")+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -565,6 +565,7 @@ tdwg %>%
     #st_transform(crs = st_crs(6933))%>%
     st_transform_proj(crs = crs_wintri) %>%
     ggplot()+
+    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     geom_sf(mapping = aes(fill = seed_mean_coverage*100))+
     scale_fill_gradient(low = "white",
                         high = "magenta",
@@ -572,7 +573,6 @@ tdwg %>%
                         limits=c(0,100))+
     #theme_minimal()+
     ggtitle("Seed Traits")+
-    geom_sf(data = grat_wintri, color = "gray30", size = 0.25/.pt,alpha=.5) +
     coord_sf(datum = NULL) +
     theme_map()
 
@@ -588,6 +588,10 @@ tdwg %>%
               # st_transform(crs = st_crs(6933))%>%
               st_transform_proj(crs = crs_wintri) %>%
               ggplot()+
+              geom_sf(data = grat_wintri,
+                      color = "gray30",
+                      size = 0.25/.pt,
+                      alpha=.5) +
               geom_sf(mapping = aes(fill = wood_mean_coverage*100))+
               scale_fill_gradient(low = "white",
                                   high = "magenta",
@@ -595,10 +599,6 @@ tdwg %>%
                                   limits=c(0,100))+
               #theme_minimal()+
               ggtitle("A. Wood Traits")+
-              geom_sf(data = grat_wintri,
-                      color = "gray30",
-                      size = 0.25/.pt,
-                      alpha=.5) +
               coord_sf(datum = NULL) +
               theme_map()
 
@@ -607,6 +607,10 @@ tdwg %>%
               #st_transform(crs = st_crs(6933))%>%
               st_transform_proj(crs = crs_wintri) %>%
               ggplot()+
+              geom_sf(data = grat_wintri,
+                      color = "gray30",
+                      size = 0.25/.pt,
+                      alpha=.5) +
               geom_sf(mapping = aes(fill = flower_mean_coverage*100))+
               scale_fill_gradient(low = "white",
                                   high = "magenta",
@@ -614,10 +618,6 @@ tdwg %>%
                                   limits=c(0,100))+
               #theme_minimal()+
               ggtitle("B. Flower Traits")+
-              geom_sf(data = grat_wintri,
-                      color = "gray30",
-                      size = 0.25/.pt,
-                      alpha=.5) +
               coord_sf(datum = NULL) +
               theme_map()
             ,
@@ -626,6 +626,10 @@ tdwg %>%
               #st_transform(crs = st_crs(6933))%>%
               st_transform_proj(crs = crs_wintri) %>%
               ggplot()+
+              geom_sf(data = grat_wintri,
+                      color = "gray30",
+                      size = 0.25/.pt,
+                      alpha=.5) +
               geom_sf(mapping = aes(fill = seed_mean_coverage*100))+
               scale_fill_gradient(low = "white",
                                   high = "magenta",
@@ -633,10 +637,6 @@ tdwg %>%
                                   limits=c(0,100))+
               #theme_minimal()+
               ggtitle("C. Seed Traits")+
-              geom_sf(data = grat_wintri,
-                      color = "gray30",
-                      size = 0.25/.pt,
-                      alpha=.5) +
               coord_sf(datum = NULL) +
               theme_map(),
             ncol = 1,
@@ -649,16 +649,16 @@ tdwg %>%
               #st_transform(crs = st_crs(6933))%>%
               st_transform_proj(crs = crs_wintri) %>%
               ggplot()+
+              geom_sf(data = grat_wintri,
+                      color = "gray30",
+                      size = 0.25/.pt,
+                      alpha=.5) +
               geom_sf(mapping = aes(fill = wood_mean_coverage*100))+
               scale_fill_gradient(low = "white",
                                   high = "magenta",
                                   name = "Mean \nCompleteness\n(%)")+
               #theme_minimal()+
               ggtitle("A. Wood Traits")+
-              geom_sf(data = grat_wintri,
-                      color = "gray30",
-                      size = 0.25/.pt,
-                      alpha=.5) +
               coord_sf(datum = NULL) +
               theme_map()
             ,
@@ -666,16 +666,16 @@ tdwg %>%
               #st_transform(crs = st_crs(6933))%>%
               st_transform_proj(crs = crs_wintri) %>%
               ggplot()+
+              geom_sf(data = grat_wintri,
+                      color = "gray30",
+                      size = 0.25/.pt,
+                      alpha=.5) +
               geom_sf(mapping = aes(fill = flower_mean_coverage*100))+
               scale_fill_gradient(low = "white",
                                   high = "magenta",
                                   name = "Mean \nCompleteness\n(%)")+
               #theme_minimal()+
               ggtitle("B. Flower Traits")+
-              geom_sf(data = grat_wintri,
-                      color = "gray30",
-                      size = 0.25/.pt,
-                      alpha=.5) +
               coord_sf(datum = NULL) +
               theme_map()
             ,
@@ -684,16 +684,16 @@ tdwg %>%
               #st_transform(crs = st_crs(6933))%>%
               st_transform_proj(crs = crs_wintri) %>%
               ggplot()+
+              geom_sf(data = grat_wintri,
+                      color = "gray30",
+                      size = 0.25/.pt,
+                      alpha=.5) +
               geom_sf(mapping = aes(fill = seed_mean_coverage*100))+
               scale_fill_gradient(low = "white",
                                   high = "magenta",
                                   name = "Mean \nCompleteness\n(%)")+
               #theme_minimal()+
               ggtitle("C. Seed Traits")+
-              geom_sf(data = grat_wintri,
-                      color = "gray30",
-                      size = 0.25/.pt,
-                      alpha=.5) +
               coord_sf(datum = NULL) +
               theme_map(),
             ncol = 1,
