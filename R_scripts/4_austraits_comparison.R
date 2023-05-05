@@ -132,9 +132,9 @@
 
     length(unique(all_data$AccSpeciesName))/length(unique(wcvp$taxon_name))#89%
 
-    trait_coverage_w_austraits <-
-      get_trait_coverage(wcvp = wcvp,
-                         trait_summary = all_data)
+    # trait_coverage_w_austraits <-
+    #   get_trait_coverage(wcvp = wcvp,
+    #                      trait_summary = all_data)
 
     # saveRDS(object = trait_coverage_w_austraits,
     #         file = "data/cleaning_raw_names/focal_trait_coverage_australia_w_austraits.rds")
@@ -246,6 +246,8 @@ ggsave(plot = austry_plot,
        filename = "plots/austraits_plus_try.jpg",width = 10,height = 4.5, bg = "white")
 
 
+ggsave(plot = austry_plot,
+       filename = "plots/fig3_high_res.pdf",width = 10,height = 4.5, bg = "white",dpi = 600)
 
 
 

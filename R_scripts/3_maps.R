@@ -112,6 +112,9 @@ ggsave(plot = overall_trait_completeness,
 ggsave(plot = overall_trait_completeness,
        filename = "plots/focal_completeness.jpg",width = 10,height = 4.5, bg = "white")
 
+ggsave(plot = overall_trait_completeness,
+       filename = "plots/fig1_high_res.pdf",width = 10,height = 4.5, bg = "white",dpi = 600)
+
 
 #######################################################
 
@@ -359,11 +362,15 @@ library(ggpubr)
             widths = c(2,1),
             labels = "AUTO")
 
-  ggsave(filename = "plots/phylo_and_dist_completeness.svg",width = 10,height = 4.5)
-  ggsave(filename = "plots/phylo_and_dist_completeness_tall.svg",width = 10,height = 4.5)
-  ggsave(filename = "plots/phylo_and_dist_completeness.jpg",width = 10,height = 4.5, bg = "white")
-  ggsave(filename = "plots/phylo_and_dist_completeness_tall.jpg",width = 10,height = 10, bg = "white")
-  ggsave(filename = "plots/phylo_and_dist_completeness_med.jpg",width = 10,height = 7, bg = "white")
+  ggsave(plot = phylo_and_dist, filename = "plots/phylo_and_dist_completeness.svg",width = 10,height = 4.5)
+  ggsave(plot = phylo_and_dist,filename = "plots/phylo_and_dist_completeness_tall.svg",width = 10,height = 4.5)
+  ggsave(plot = phylo_and_dist,filename = "plots/phylo_and_dist_completeness.jpg",width = 10,height = 4.5, bg = "white")
+  ggsave(plot = phylo_and_dist,filename = "plots/phylo_and_dist_completeness_tall.jpg",width = 10,height = 10, bg = "white")
+  ggsave(plot = phylo_and_dist,filename = "plots/phylo_and_dist_completeness_med.jpg",width = 10,height = 7, bg = "white")
+
+  ggsave(plot = phylo_and_dist,filename = "plots/fig2_high_res.pdf",width = 10,height = 7, bg = "white",dpi = 600)
+
+
 
   # Distrbutional data
     max(tdwg$DISRIBUTIONAL_COMPLETENESS) #100%
